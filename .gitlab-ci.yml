@@ -1,0 +1,13 @@
+stages:
+  - containerization
+
+variables:
+  APPLICATION_NAME: nenkyuu-calendar
+
+containerization:
+  stage: containerization
+  tags:
+    - "x86"
+  script:
+    - docker build -t ${CONTAINER_REGISTRY}/${APPLICATION_NAME} .
+    - docker push ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
