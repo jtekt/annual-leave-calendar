@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nenkyuu-calendar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nenkyuu-calendar
+  template:
+    metadata:
+      labels:
+        app: nenkyuu-calendar
+    spec:
+      containers:
+      - name: nenkyuu-calendar
+        image: 172.16.98.151:5000/nenkyuu-calendar
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nenkyuu-calendar
+spec:
+  ports:
+  - port: 80
+    nodePort: 30514
+  selector:
+    app: nenkyuu-calendar
+  type: NodePort
