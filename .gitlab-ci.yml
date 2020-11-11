@@ -6,8 +6,7 @@ variables:
 
 containerization:
   stage: containerization
-  tags:
-    - "x86"
   script:
-    - docker build -t ${CONTAINER_REGISTRY}/${APPLICATION_NAME} .
-    - docker push ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+    - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
+    - docker build -t ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME} .
+    - docker push ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
