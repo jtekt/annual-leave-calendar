@@ -8,6 +8,9 @@ const yoteiSchema = new mongoose.Schema({
   pm: Boolean,
   refresh: Boolean,
   plus_one: Boolean,
+},
+{
+  //collection: 'yoteis'
 })
 
 const Yotei = mongoose.model('yotei', yoteiSchema)

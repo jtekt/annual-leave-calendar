@@ -39,7 +39,7 @@ exports.get_entries_of_user = (req, res) => {
       return
     }
 
-    let query = {user_id: String(user_id)}
+    const query = {$or: [{user_id: Number(user_id)}, {user_id: String(user_id)}]}
 
     db.db(mongodb_db)
     .collection(mongodb_collection)
@@ -119,11 +119,17 @@ exports.get_entries_of_group = (req, res) => {
   .then(response => {
     let user_records = response.data
 
-    let query = {
-      $or: user_records.map(record => {
-        return {user_id: record._fields[record._fieldLookup.user].identity.low}
+    // dealing with IDs as strings or numbers
+    let query_array = [
+      ...user_records.map(record => {
+        return {user_id: String(record._fields[record._fieldLookup.user].identity.low)}
+      }),
+      ...user_records.map(record => {
+        return {user_id: Number(record._fields[record._fieldLookup.user].identity.low)}
       })
-    }
+    ]
+
+    const query = { $or: query_array }
 
     MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
 
@@ -205,8 +211,6 @@ exports.create_entry = (req, res) => {
       refresh: false,
       plus_one: false,
     }
-
-    console.log(new_document)
 
     db.db(mongodb_db)
     .collection(mongodb_collection)

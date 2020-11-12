@@ -129,11 +129,11 @@ exports.create_entry = (req, res) => {
   const new_yotei = {
     user_id : String(user_id),
     date: date,
-    am: true,
-    pm: true,
-    taken: false,
-    refresh: false,
-    plus_one: false,
+    am: req.body.am || true,
+    pm: req.body.pm || true,
+    taken: req.body.taken || false,
+    refresh:req.body.refresh || false,
+    plus_one: req.body.plus_one || false,
   }
 
   Yotei.create(new_yotei)
