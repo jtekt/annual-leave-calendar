@@ -1,6 +1,6 @@
 {
   "name": "nenkyuu_calendar",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "",
   "main": "main.js",
   "scripts": {
@@ -15,6 +15,7 @@
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
-    "mongodb": "^3.6.3"
+    "mongodb": "^3.6.3",
+    "mongoose": "^5.10.13"
   }
 }

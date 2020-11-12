@@ -10,6 +10,81 @@ const ObjectID = mongodb.ObjectID
 const mongodb_url = process.env.MONGODB_URL || 'mongodb://mongo'
 const mongodb_db = 'nenkyuu_calendar'
 const mongodb_collection = 'yotei'
+const mongodb_options = {
+   useUnifiedTopology: true,
+}
+
+
+
+exports.get_entries_of_user = (req, res) => {
+
+  let user_id = req.params.id
+    || res.locals.user.identity.low
+
+  if(user_id === 'self') user_id = res.locals.user.identity.low
+
+
+  if(!user_id) {
+    console.log(`Undefined user ID`)
+    res.status(400).send(`Undefined user ID`)
+    return
+  }
+
+
+  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
+
+    if (err) {
+      console.log(err)
+      res.status(500).send(`MongoDB connection error`)
+      return
+    }
+
+    let query = {user_id: String(user_id)}
+
+    db.db(mongodb_db)
+    .collection(mongodb_collection)
+    .find(query).toArray( (err, result) => {
+
+      if (err) {
+        console.log(err)
+        res.status(500).send(`MongoDB transaction error`)
+        return
+      }
+
+      res.send(result)
+
+      db.close()
+    })
+  })
+}
+
+exports.get_all_entries = (req, res) => {
+
+  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
+
+    if (err) {
+      console.log(err)
+      res.status(500).send(`MongoDB connection error`)
+      return
+    }
+
+
+    db.db(mongodb_db)
+    .collection(mongodb_collection)
+    .find({}).toArray( (err, result) => {
+
+      if (err) {
+        console.log(err)
+        res.status(500).send(`MongoDB transaction error`)
+        return
+      }
+
+      res.send(result)
+
+      db.close()
+    })
+  })
+}
 
 exports.get_entries_of_group = (req, res) => {
 
@@ -50,7 +125,7 @@ exports.get_entries_of_group = (req, res) => {
       })
     }
 
-    MongoClient.connect(mongodb_url, (err, db) => {
+    MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
 
       if (err) {
         console.log(err)
@@ -94,48 +169,6 @@ exports.get_entries_of_group = (req, res) => {
 
 }
 
-exports.get_entries_of_user = (req, res) => {
-
-  let user_id = req.params.id
-    || res.locals.user.identity.low
-
-  if(user_id === 'self') user_id = res.locals.user.identity.low
-
-
-  if(!user_id) {
-    console.log(`Undefined user ID`)
-    res.status(400).send(`Undefined user ID`)
-    return
-  }
-
-
-  MongoClient.connect(mongodb_url, (err, db) => {
-
-    if (err) {
-      console.log(err)
-      res.status(500).send(`MongoDB connection error`)
-      return
-    }
-
-    let query = {user_id: user_id}
-
-    db.db(mongodb_db)
-    .collection(mongodb_collection)
-    .find(query).toArray( (err, result) => {
-
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB transaction error`)
-        return
-      }
-
-      res.send(result)
-
-      db.close()
-    })
-  })
-}
-
 exports.create_entry = (req, res) => {
 
   let user_id = req.params.id
@@ -155,7 +188,7 @@ exports.create_entry = (req, res) => {
     return res.status(400).send(`Undefined date`)
   }
 
-  MongoClient.connect(mongodb_url, (err, db) => {
+  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
 
     if (err) {
       console.log(err)
@@ -164,7 +197,7 @@ exports.create_entry = (req, res) => {
     }
 
     const new_document = {
-      user_id : user_id,
+      user_id : String(user_id),
       date: date,
       am: true,
       pm: true,
@@ -172,6 +205,8 @@ exports.create_entry = (req, res) => {
       refresh: false,
       plus_one: false,
     }
+
+    console.log(new_document)
 
     db.db(mongodb_db)
     .collection(mongodb_collection)
@@ -182,6 +217,8 @@ exports.create_entry = (req, res) => {
         res.status(500).send(`MongoDB transaction error`)
         return
       }
+
+      console.log(`Created 年休予定 for user ${user_id}`)
 
       res.send(result)
 
@@ -196,7 +233,7 @@ exports.get_single_entry = (req, res) => {
     || req.params.entry_id
     || req.params.yotei_id
 
-  MongoClient.connect(mongodb_url, (err, db) => {
+  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
 
     if (err) {
       console.log(err)
@@ -233,7 +270,7 @@ exports.update_entry = (req, res) => {
     return res.status(400).send(`Undefined ID`)
   }
 
-  MongoClient.connect(mongodb_url, (err, db) => {
+  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
 
     if (err) {
       console.log(err)
@@ -274,7 +311,7 @@ exports.delete_entry = (req, res) => {
     return res.status(400).send(`Undefined ID`)
   }
 
-  MongoClient.connect(mongodb_url, (err, db) => {
+  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
 
     if (err) {
       console.log(err)

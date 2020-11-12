@@ -18,6 +18,7 @@ app.use(bodyParser.json())
 app.use(cors())
 app.use(auth.authenticate)
 
+//const controller = require('./controllers/yotei_mongoose.js')
 const controller = require('./controllers/yotei.js')
 
 const APP_PORT = process.env.APP_PORT || 80
@@ -39,6 +40,9 @@ app.route('/groups/:id/entries')
 app.route('/users/:id/entries')
   .get(controller.get_entries_of_user)
   .post(controller.create_entry)
+
+app.route('/entries')
+  .get(controller.get_all_entries)
 
 app.route('/entries/:id')
   .get(controller.get_single_entry)
