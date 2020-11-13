@@ -1,19 +1,23 @@
-const mongodb = require('mongodb')
 const dotenv = require('dotenv')
 const axios = require('axios')
+const mongoose = require('mongoose')
+const Yotei = require('../models/yotei.js')
 
 dotenv.config()
 
-const MongoClient = mongodb.MongoClient
-const ObjectID = mongodb.ObjectID
 
 const mongodb_url = process.env.MONGODB_URL || 'mongodb://mongo'
-const mongodb_db = 'nenkyuu_calendar'
-const mongodb_collection = 'yotei'
+const mongodb_db = process.env.MONGODB_DB ||'nenkyuu_calendar'
 const mongodb_options = {
    useUnifiedTopology: true,
+   useNewUrlParser: true,
 }
 
+mongoose.connect(`${mongodb_url}/${mongodb_db}`, mongodb_options)
+
+const db = mongoose.connection
+db.on('error', console.error.bind(console, 'connection error:'))
+db.once('open', () => { console.log(`[Mongoose] Connected`) })
 
 
 exports.get_entries_of_user = (req, res) => {
@@ -30,60 +34,96 @@ exports.get_entries_of_user = (req, res) => {
     return
   }
 
+  Yotei.find({ user_id: user_id })
+  .sort('date')
+  .then(results => { res.send(results) })
+  .catch(error => { res.status(500).send('MongoDB error') })
 
-  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
+}
 
-    if (err) {
-      console.log(err)
-      res.status(500).send(`MongoDB connection error`)
-      return
-    }
 
-    const query = {$or: [{user_id: Number(user_id)}, {user_id: String(user_id)}]}
 
-    db.db(mongodb_db)
-    .collection(mongodb_collection)
-    .find(query).toArray( (err, result) => {
+exports.create_entry = (req, res) => {
 
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB transaction error`)
-        return
-      }
+  let user_id = req.params.id
+    || res.locals.user.identity.low
 
-      res.send(result)
+  if(user_id === 'self') user_id = res.locals.user.identity.low
 
-      db.close()
-    })
-  })
+  if(!user_id) {
+    console.log(`Undefined user ID`)
+    return res.status(400).send(`Undefined user ID`)
+  }
+
+  const date = req.body.date
+
+  if(!date) {
+    console.log(`Undefined date`)
+    return res.status(400).send(`Undefined date`)
+  }
+
+  const new_yotei = {
+    user_id : String(user_id),
+    date: date,
+    am: req.body.am || true,
+    pm: req.body.pm || true,
+    taken: req.body.taken || false,
+    refresh:req.body.refresh || false,
+    plus_one: req.body.plus_one || false,
+  }
+
+  Yotei.create(new_yotei)
+  .then(result => { res.send(result) })
+  .catch(error => { res.status(500).send('MongoDB error') })
+}
+
+exports.get_single_entry = (req, res) => {
+
+  let entry_id = req.params.id
+    || req.params.entry_id
+    || req.params.yotei_id
+
+  Yotei.findById(entry_id)
+  .then(result => { res.send(result) })
+  .catch(error => { res.status(500).send('MongoDB error') })
 }
 
 exports.get_all_entries = (req, res) => {
+  Yotei.find({})
+  .then(result => { res.send(result) })
+  .catch(error => { res.status(500).send('MongoDB error') })
+}
 
-  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
+exports.update_entry = (req, res) => {
+  let entry_id = req.params.id
+    || req.params.entry_id
+    || req.params.yotei_id
 
-    if (err) {
-      console.log(err)
-      res.status(500).send(`MongoDB connection error`)
-      return
-    }
+  if(!entry_id) {
+    console.log(`Undefined ID`)
+    return res.status(400).send(`Undefined ID`)
+  }
 
+  Yotei.updateOne({_id: entry_id}, req.body)
+  .then(result => {res.send(result)})
+  .catch(error => { res.status(500).send('MongoDB error') })
+}
 
-    db.db(mongodb_db)
-    .collection(mongodb_collection)
-    .find({}).toArray( (err, result) => {
+exports.delete_entry = (req, res) => {
 
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB transaction error`)
-        return
-      }
+  let entry_id = req.params.id
+    || req.params.entry_id
+    || req.params.yotei_id
 
-      res.send(result)
+  if(!entry_id) {
+    console.log(`Undefined ID`)
+    return res.status(400).send(`Undefined ID`)
+  }
 
-      db.close()
-    })
-  })
+  Yotei.deleteOne({_id: entry_id})
+  .then(result => {res.send(result)})
+  .catch(error => { res.status(500).send('MongoDB error') })
+
 }
 
 exports.get_entries_of_group = (req, res) => {
@@ -119,52 +159,31 @@ exports.get_entries_of_group = (req, res) => {
   .then(response => {
     let user_records = response.data
 
-    // dealing with IDs as strings or numbers
-    let query_array = [
-      ...user_records.map(record => {
-        return {user_id: String(record._fields[record._fieldLookup.user].identity.low)}
-      }),
-      ...user_records.map(record => {
-        return {user_id: Number(record._fields[record._fieldLookup.user].identity.low)}
+    const query = {
+      $or: user_records.map(record => {
+        return {user_id: record._fields[record._fieldLookup.user].identity.low}
       })
-    ]
+    }
 
-    const query = { $or: query_array }
+    Yotei.find(query)
+    .sort('date')
+    .then(entries => {
 
-    MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
-
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB connection error`)
-        return
-      }
-
-      db.db(mongodb_db)
-      .collection(mongodb_collection)
-      .find(query).toArray( (err, result) => {
-
-        if (err) {
-          console.log(err)
-          res.status(500).send(`MongoDB transaction error`)
-          return
-        }
-
-        // put the entries in the corresponding user records
-        user_records.forEach((record) => {
-          let user = record._fields[record._fieldLookup.user]
-          let user_entries = result.filter(entry => {
-            return entry.user_id === user.identity.low
-          })
-
-          user.entries = user_entries
-
+      // put the entries in the corresponding user records
+      // NOT OPTIMAL AT ALL
+      user_records.forEach((record) => {
+        let user = record._fields[record._fieldLookup.user]
+        let user_entries = entries.filter(entry => {
+          return entry.user_id === String(user.identity.low)
         })
 
-        res.send(user_records)
+        user.entries = user_entries
 
-        db.close()
       })
+
+      res.send(user_records)
     })
+    .catch(error => { res.status(500).send('MongoDB error') })
 
   })
   .catch(error => {
@@ -172,173 +191,5 @@ exports.get_entries_of_group = (req, res) => {
     res.status(500).send(`Error fetching group`)
   })
 
-
-}
-
-exports.create_entry = (req, res) => {
-
-  let user_id = req.params.id
-    || res.locals.user.identity.low
-
-  if(user_id === 'self') user_id = res.locals.user.identity.low
-
-  if(!user_id) {
-    console.log(`Undefined user ID`)
-    return res.status(400).send(`Undefined user ID`)
-  }
-
-  const date = req.body.date
-
-  if(!date) {
-    console.log(`Undefined date`)
-    return res.status(400).send(`Undefined date`)
-  }
-
-  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
-
-    if (err) {
-      console.log(err)
-      res.status(500).send(`MongoDB connection error`)
-      return
-    }
-
-    const new_document = {
-      user_id : String(user_id),
-      date: date,
-      am: true,
-      pm: true,
-      taken: false,
-      refresh: false,
-      plus_one: false,
-    }
-
-    db.db(mongodb_db)
-    .collection(mongodb_collection)
-    .insertOne(new_document, (err, result) => {
-
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB transaction error`)
-        return
-      }
-
-      console.log(`Created 年休予定 for user ${user_id}`)
-
-      res.send(result)
-
-      db.close()
-    })
-  })
-}
-
-exports.get_single_entry = (req, res) => {
-
-  let entry_id = req.params.id
-    || req.params.entry_id
-    || req.params.yotei_id
-
-  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
-
-    if (err) {
-      console.log(err)
-      res.status(500).send(`MongoDB connection error`)
-      return
-    }
-
-    let query = {_id: ObjectID(entry_id)}
-
-    db.db(mongodb_db)
-    .collection(mongodb_collection)
-    .findOne(query, (err, result) => {
-
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB transaction error`)
-        return
-      }
-
-      res.send(result)
-
-      db.close()
-    })
-  })
-}
-
-exports.update_entry = (req, res) => {
-  let entry_id = req.params.id
-    || req.params.entry_id
-    || req.params.yotei_id
-
-  if(!entry_id) {
-    console.log(`Undefined ID`)
-    return res.status(400).send(`Undefined ID`)
-  }
-
-  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
-
-    if (err) {
-      console.log(err)
-      res.status(500).send(`MongoDB connection error`)
-      return
-    }
-
-    const query = {_id: ObjectID(entry_id)}
-
-    delete req.body._id
-    const actions = {$set: req.body}
-
-    db.db(mongodb_db)
-    .collection(mongodb_collection)
-    .updateOne(query, actions, (err, result) => {
-
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB transaction error`)
-        return
-      }
-
-      res.send(result)
-
-      db.close()
-    })
-  })
-}
-
-exports.delete_entry = (req, res) => {
-
-  let entry_id = req.params.id
-    || req.params.entry_id
-    || req.params.yotei_id
-
-  if(!entry_id) {
-    console.log(`Undefined ID`)
-    return res.status(400).send(`Undefined ID`)
-  }
-
-  MongoClient.connect(mongodb_url, mongodb_options, (err, db) => {
-
-    if (err) {
-      console.log(err)
-      res.status(500).send(`MongoDB connection error`)
-      return
-    }
-
-    const query = {_id: ObjectID(entry_id)}
-
-    db.db(mongodb_db)
-    .collection(mongodb_collection)
-    .deleteOne(query, (err, result) => {
-
-      if (err) {
-        console.log(err)
-        res.status(500).send(`MongoDB transaction error`)
-        return
-      }
-
-      res.send(result)
-
-      db.close()
-    })
-  })
 
 }
