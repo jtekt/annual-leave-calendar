@@ -18,8 +18,8 @@ app.use(bodyParser.json())
 app.use(cors())
 //app.use(auth.authenticate)
 
-//const controller = require('./controllers/yotei_mongoose.js')
-const controller = require('./controllers/yotei.js')
+const controller = require('./controllers/yotei_mongoose.js')
+//const controller = require('./controllers/yotei.js')
 
 const APP_PORT = process.env.APP_PORT || 80
 
