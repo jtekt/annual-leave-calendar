@@ -15,9 +15,9 @@
 
 Note: all requests must be done with a valid token provided in the authorization header in the following form:
 
-'''
+```
 Authorization: Bearer YOUR_TOKEN_HERE
-'''
+```
 
 ## Environment variables
 
