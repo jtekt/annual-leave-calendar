@@ -5,7 +5,6 @@ const Yotei = require('../models/yotei.js')
 
 dotenv.config()
 
-
 const mongodb_url = process.env.MONGODB_URL || 'mongodb://mongo'
 const mongodb_db = process.env.MONGODB_DB ||'nenkyuu_calendar'
 const mongodb_options = {
@@ -13,11 +12,21 @@ const mongodb_options = {
    useNewUrlParser: true,
 }
 
+global.mongodb_connected = false
+
 mongoose.connect(`${mongodb_url}/${mongodb_db}`, mongodb_options)
 
 const db = mongoose.connection
 db.on('error', console.error.bind(console, 'connection error:'))
-db.once('open', () => { console.log(`[Mongoose] Connected`) })
+db.once('open', () => { mongodb_connected = true })
+
+const error_handling = (error, res) => {
+  console.log(error)
+  res.status(500).send('MongoDB error')
+}
+
+exports.mongodb_url = mongodb_url
+exports.mongodb_db = mongodb_db
 
 
 exports.get_entries_of_user = (req, res) => {
@@ -36,12 +45,13 @@ exports.get_entries_of_user = (req, res) => {
 
   Yotei.find({ user_id: user_id })
   .sort('date')
-  .then(results => { res.send(results) })
-  .catch(error => { res.status(500).send('MongoDB error') })
+  .then(results => {
+    console.log(`[Mongoose] 予定 of user ${user_id} queried`)
+    res.send(results)
+  })
+  .catch(error => { error_handling(error, res) })
 
 }
-
-
 
 exports.create_entry = (req, res) => {
 
@@ -63,7 +73,7 @@ exports.create_entry = (req, res) => {
   }
 
   const new_yotei = {
-    user_id : String(user_id),
+    user_id : user_id,
     date: date,
     am: req.body.am || true,
     pm: req.body.pm || true,
@@ -73,8 +83,11 @@ exports.create_entry = (req, res) => {
   }
 
   Yotei.create(new_yotei)
-  .then(result => { res.send(result) })
-  .catch(error => { res.status(500).send('MongoDB error') })
+  .then(result => {
+    console.log(`[Mongoose] 予定 ${result._id} created for user ${user_id}`)
+    res.send(result)
+   })
+  .catch(error => { error_handling(error, res) })
 }
 
 exports.get_single_entry = (req, res) => {
@@ -84,14 +97,20 @@ exports.get_single_entry = (req, res) => {
     || req.params.yotei_id
 
   Yotei.findById(entry_id)
-  .then(result => { res.send(result) })
-  .catch(error => { res.status(500).send('MongoDB error') })
+  .then(result => {
+    console.log(`[Mongoose] 予定 ${entry_id} queried`)
+    res.send(result)
+   })
+  .catch(error => { error_handling(error, res) })
 }
 
 exports.get_all_entries = (req, res) => {
   Yotei.find({})
-  .then(result => { res.send(result) })
-  .catch(error => { res.status(500).send('MongoDB error') })
+  .then(result => {
+    console.log(`[Mongoose] Queried all 予定`)
+    res.send(result)
+   })
+  .catch(error => { error_handling(error, res) })
 }
 
 exports.update_entry = (req, res) => {
@@ -105,8 +124,11 @@ exports.update_entry = (req, res) => {
   }
 
   Yotei.updateOne({_id: entry_id}, req.body)
-  .then(result => {res.send(result)})
-  .catch(error => { res.status(500).send('MongoDB error') })
+  .then(result => {
+    console.log(`[Mongoose] 予定 ${entry_id} updated`)
+    res.send(result)
+  })
+  .catch(error => { error_handling(error, res) })
 }
 
 exports.delete_entry = (req, res) => {
@@ -121,8 +143,11 @@ exports.delete_entry = (req, res) => {
   }
 
   Yotei.deleteOne({_id: entry_id})
-  .then(result => {res.send(result)})
-  .catch(error => { res.status(500).send('MongoDB error') })
+  .then(result => {
+    console.log(`[Mongoose] 予定 ${entry_id} deleted`)
+    res.send(result)
+  })
+  .catch(error => { error_handling(error, res) })
 
 }
 
@@ -142,8 +167,6 @@ exports.get_entries_of_group = (req, res) => {
     res.status(403).send(`JWT not found`)
     return
   }
-
-
 
   const group_id = req.params.id
 
@@ -181,15 +204,16 @@ exports.get_entries_of_group = (req, res) => {
 
       })
 
+      console.log(`[Mongoose] 予定 of group ${group_id} queried`)
+
       res.send(user_records)
     })
-    .catch(error => { res.status(500).send('MongoDB error') })
+    .catch(error => { error_handling(error, res) })
 
   })
   .catch(error => {
     console.log(error)
     res.status(500).send(`Error fetching group`)
   })
-
 
 }
