@@ -7,6 +7,8 @@ variables:
 
 containerization:
   stage: containerization
+  tags:
+    - moreillon
   script:
     - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
     - docker build -t ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME} .
@@ -14,6 +16,7 @@ containerization:
 
 deployment:
   stage: deployment
+  allow_failure: true
   script:
     - kubectl rollout restart deployment/${APPLICATION_NAME}
   environment:

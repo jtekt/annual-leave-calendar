@@ -13,6 +13,9 @@ const yoteiSchema = new mongoose.Schema({
   //collection: 'yoteis'
 })
 
+yoteiSchema.index({ date: 1, user_id: 1 }, { unique: true })
+
+
 const Yotei = mongoose.model('yotei', yoteiSchema)
 
 module.exports = Yotei

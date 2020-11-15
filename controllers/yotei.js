@@ -87,7 +87,16 @@ exports.create_entry = (req, res) => {
     console.log(`[Mongoose] 予定 ${result._id} created for user ${user_id}`)
     res.send(result)
    })
-  .catch(error => { error_handling(error, res) })
+  .catch(error => {
+    if(error.code === 11000) {
+      res.status(400).send(`その日にはもう予定が存在してます`)
+      console.log(`[Mongoose] 予定 already exists`)
+    }
+    else {
+      error_handling(error)
+    }
+
+  })
 }
 
 exports.get_single_entry = (req, res) => {
@@ -105,7 +114,14 @@ exports.get_single_entry = (req, res) => {
 }
 
 exports.get_all_entries = (req, res) => {
-  Yotei.find({})
+
+  let query = req.query
+
+  // Dirty
+  try { query.date = JSON.parse(query.date) }
+  catch (e) {}
+
+  Yotei.find(query)
   .then(result => {
     console.log(`[Mongoose] Queried all 予定`)
     res.send(result)
