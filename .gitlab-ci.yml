@@ -16,6 +16,8 @@ containerization:
 
 deployment:
   stage: deployment
+  tags:
+    - moreillon
   allow_failure: true
   script:
     - kubectl rollout restart deployment/${APPLICATION_NAME}

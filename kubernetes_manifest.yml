@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: nenkyuu-calendar
-        image: 172.16.98.151:5000/nenkyuu-calendar
+        image: moreillon/nenkyuu-calendar
         imagePullPolicy: Always
         ports:
         - containerPort: 80
