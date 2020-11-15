@@ -16,7 +16,7 @@ app.use(bodyParser.json())
 app.use(cors())
 
 // Use the authentication middleware
-app.use(auth.authenticate)
+//app.use(auth.authenticate)
 
 const controller = require('./controllers/yotei.js')
 
@@ -36,20 +36,20 @@ app.get('/', (req, res) => {
 })
 
 app.route('/groups/:id/entries')
-  .get(controller.get_entries_of_group)
+  .get(auth.authenticate, controller.get_entries_of_group)
 
 
 app.route('/users/:id/entries')
-  .get(controller.get_entries_of_user)
-  .post(controller.create_entry)
+  .get(auth.authenticate, controller.get_entries_of_user)
+  .post(auth.authenticate, controller.create_entry)
 
 app.route('/entries')
-  .get(controller.get_all_entries)
+  .get(auth.authenticate, controller.get_all_entries)
 
 app.route('/entries/:id')
-  .get(controller.get_single_entry)
-  .put(controller.update_entry)
-  .delete(controller.delete_entry)
+  .get(auth.authenticate, controller.get_single_entry)
+  .put(auth.authenticate, controller.update_entry)
+  .delete(auth.authenticate, controller.delete_entry)
 
 
 app.listen(APP_PORT, () => {
