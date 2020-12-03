@@ -31,4 +31,5 @@ deployment:
   environment:
     name: production
     kubernetes:
+      # NAMESPACE provided by GitLab
       namespace: ${KUBERNETES_NAMESPACE}
