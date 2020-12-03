@@ -6,14 +6,16 @@ variables:
   APPLICATION_NAME: nenkyuu-calendar
   KUBERNETES_PORT: 30514
 
-  # CONTAINER_REGISTRY is provided by GitLab
-  CONTAINER_IMAGE: ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+  # Container image will be stored on Docker HUb
+  CONTAINER_IMAGE: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
 
 containerization:
   stage: containerization
   tags:
     - moreillon
   script:
+    # Docker Hub login
+    - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
     # Building the container image
     - docker build -t ${CONTAINER_IMAGE} .
     # Push the container image to the container registry
