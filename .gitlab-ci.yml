@@ -4,22 +4,29 @@ stages:
 
 variables:
   APPLICATION_NAME: nenkyuu-calendar
+  KUBERNETES_PORT: 30514
+
+  # CONTAINER_REGISTRY is provided by GitLab
+  CONTAINER_IMAGE: ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
 
 containerization:
   stage: containerization
   tags:
     - moreillon
   script:
-    - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
-    - docker build -t ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME} .
-    - docker push ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
+    # Building the container image
+    - docker build -t ${CONTAINER_IMAGE} .
+    # Push the container image to the container registry
+    - docker push ${CONTAINER_IMAGE}
 
 deployment:
   stage: deployment
   tags:
     - moreillon
-  allow_failure: true
   script:
+    # create/update the deployment
+    - envsubst < kubernetes_manifest.yml | kubectl apply -f -
+    # Pull latest image of deployment
     - kubectl rollout restart deployment/${APPLICATION_NAME}
   environment:
     name: production

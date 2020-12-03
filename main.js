@@ -27,8 +27,8 @@ app.get('/', (req, res) => {
     application_name: 'Nekyuu Calendar API',
     author: 'Maxime MOREILLON',
     version: pjson.version,
-    authentication_api_url: process.env.AUTHENTICATION_API_URL,
-    group_manager_api_url: process.env.GROUP_MANAGER_API_URL,
+    authentication_api_url: process.env.AUTHENTICATION_API_URL || 'UNDEFINMED',
+    group_manager_api_url: process.env.GROUP_MANAGER_API_URL || 'UNDEFINMED',
     mongodb_url: controller.mongodb_url,
     mongodb_db: controller.mongodb_db,
     mongodb_connected: mongodb_connected, // global
