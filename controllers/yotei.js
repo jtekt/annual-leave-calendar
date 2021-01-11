@@ -43,10 +43,17 @@ exports.get_entries_of_user = (req, res) => {
     return
   }
 
-  Yotei.find({ user_id: user_id })
+  const queried_year = req.query.year || new Date().getYear() + 1900
+  const start_of_year = new Date(`${queried_year}/01/01`)
+  const end_of_year = new Date(`${queried_year}/12/31`)
+
+  const query = { user_id, date: {$gte: start_of_year, $lte: end_of_year} }
+
+  Yotei.find(query)
   .sort('date')
   .then(results => {
     console.log(`[Mongoose] 予定 of user ${user_id} queried`)
+    console.log(results)
     res.send(results)
   })
   .catch(error => { error_handling(error, res) })
