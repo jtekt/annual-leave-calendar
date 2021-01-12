@@ -203,13 +203,25 @@ exports.get_entries_of_group = (req, res) => {
   const url = `${process.env.GROUP_MANAGER_API_URL}/groups/${group_id}/members`
   axios.get(url, {headers: {Authorization: `Bearer ${jwt}`}})
   .then(response => {
+
     let user_records = response.data
+
+    const queried_year = req.query.year || new Date().getYear() + 1900
+    const start_of_year = new Date(`${queried_year}/01/01`)
+    const end_of_year = new Date(`${queried_year}/12/31`)
+
+
 
     const query = {
       $or: user_records.map(record => {
         return {user_id: record._fields[record._fieldLookup.user].identity.low}
-      })
+      }),
+      date: {$gte: start_of_year, $lte: end_of_year}
     }
+
+
+
+
 
     Yotei.find(query)
     .sort('date')
