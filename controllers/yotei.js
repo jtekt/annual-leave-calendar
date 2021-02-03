@@ -53,7 +53,6 @@ exports.get_entries_of_user = (req, res) => {
   .sort('date')
   .then(results => {
     console.log(`[Mongoose] 予定 of user ${user_id} queried`)
-    console.log(results)
     res.send(results)
   })
   .catch(error => { error_handling(error, res) })
@@ -79,14 +78,15 @@ exports.create_entry = (req, res) => {
     return res.status(400).send(`Undefined date`)
   }
 
+  // TODO: AM and PM will always be true
   const new_yotei = {
     user_id : user_id,
     date: date,
-    am: req.body.am || true,
-    pm: req.body.pm || true,
-    taken: req.body.taken || false,
-    refresh:req.body.refresh || false,
-    plus_one: req.body.plus_one || false,
+    am: req.body.am ?? true,
+    pm: req.body.pm ?? true,
+    taken: req.body.taken ?? false,
+    refresh:req.body.refresh ?? false,
+    plus_one: req.body.plus_one ?? false,
   }
 
   Yotei.create(new_yotei)
