@@ -5,8 +5,8 @@ const Yotei = require('../models/yotei.js')
 
 dotenv.config()
 
-const mongodb_url = process.env.MONGODB_URL || 'mongodb://mongo'
-const mongodb_db = process.env.MONGODB_DB ||'nenkyuu_calendar'
+const mongodb_url = process.env.MONGODB_URL ?? 'mongodb://mongo'
+const mongodb_db = process.env.MONGODB_DB ??'nenkyuu_calendar'
 const mongodb_options = {
    useUnifiedTopology: true,
    useNewUrlParser: true,
@@ -28,13 +28,17 @@ const error_handling = (error, res) => {
 exports.mongodb_url = mongodb_url
 exports.mongodb_db = mongodb_db
 
+function get_current_user_id(res){
+  return res.locals.user.identity.low
+    ?? res.locals.user.identity
+}
 
 exports.get_entries_of_user = (req, res) => {
 
   let user_id = req.params.id
-    || res.locals.user.identity.low
+    ?? get_current_user_id(res)
 
-  if(user_id === 'self') user_id = res.locals.user.identity.low
+  if(user_id === 'self') user_id = get_current_user_id(res)
 
 
   if(!user_id) {
@@ -62,9 +66,9 @@ exports.get_entries_of_user = (req, res) => {
 exports.create_entry = (req, res) => {
 
   let user_id = req.params.id
-    || res.locals.user.identity.low
+    || get_current_user_id(res)
 
-  if(user_id === 'self') user_id = res.locals.user.identity.low
+  if(user_id === 'self') user_id = get_current_user_id(res)
 
   if(!user_id) {
     console.log(`Undefined user ID`)
@@ -82,6 +86,7 @@ exports.create_entry = (req, res) => {
   const new_yotei = {
     user_id : user_id,
     date: date,
+    type: req.body.type ?? "有休",
     am: req.body.am ?? true,
     pm: req.body.pm ?? true,
     taken: req.body.taken ?? false,
@@ -176,11 +181,24 @@ exports.delete_entry = (req, res) => {
 
 exports.get_entries_of_group = (req, res) => {
 
+  /*
+  // response format:
+  [
+    {
+      identity: 123,
+      properties: {},
+      yotei: [],
+    }
+  ]
+  */
+
+  // Why is there auth here?
+  // Maybe because token needed for group manager request
+  // Idea: have token in middleware
   if(!('authorization' in req.headers)) {
     console.log(`Authorization header not set`)
     res.status(403).send(`Authorization header not set`)
     return
-
   }
 
   const jwt = req.headers.authorization.split(" ")[1]
@@ -191,7 +209,7 @@ exports.get_entries_of_group = (req, res) => {
     return
   }
 
-  const group_id = req.params.id
+  const group_id = req.params.id ?? req.params.group_id
 
   if(!group_id) {
     console.log(`Undefined group ID`)
@@ -199,9 +217,11 @@ exports.get_entries_of_group = (req, res) => {
     return
   }
 
-
+  // Get group members using API call to group manager microservice
   const url = `${process.env.GROUP_MANAGER_API_URL}/groups/${group_id}/members`
-  axios.get(url, {headers: {Authorization: `Bearer ${jwt}`}})
+  const options = {headers: {Authorization: `Bearer ${jwt}`}}
+
+  axios.get(url, options)
   .then(response => {
 
     let user_records = response.data
@@ -210,32 +230,65 @@ exports.get_entries_of_group = (req, res) => {
     const start_of_year = new Date(`${queried_year}/01/01`)
     const end_of_year = new Date(`${queried_year}/12/31`)
 
-
-
+    // Build a query so as to get yoteis of all members using their ID
     const query = {
-      $or: user_records.map(record => {
-        return {user_id: record._fields[record._fieldLookup.user].identity.low}
+      $or: user_records.map( record => {
+
+        const user = record._fields[record._fieldLookup.user]
+        const user_id = user.identity.low ?? user.identity
+
+        return { user_id }
       }),
       date: {$gte: start_of_year, $lte: end_of_year}
     }
-
-
-
 
 
     Yotei.find(query)
     .sort('date')
     .then(entries => {
 
-      // put the entries in the corresponding user records
-      // NOT OPTIMAL AT ALL
-      user_records.forEach((record) => {
-        let user = record._fields[record._fieldLookup.user]
-        let user_entries = entries.filter(entry => {
-          return entry.user_id === String(user.identity.low)
-        })
+      /*
+      // Entries format:
+      [
+        {
+          _id: "1234dsfs",
+          user_id: 1223,
+          date: ...
 
-        user.entries = user_entries
+        },
+        {...}
+      ]
+
+      */
+
+      // Create a mapping for entries
+      let entries_mapping = {}
+      entries.forEach((entry) => {
+        if(!entries_mapping[entry.user_id]){
+          entries_mapping[entry.user_id] = []
+        }
+        entries_mapping[entry.user_id].push(entry)
+      })
+
+      /*
+      {
+        21313213: [entry, entry],
+        123535: [entry, entry],
+      }
+      */
+
+      // put the entries in the corresponding user records
+      user_records.forEach( (record) => {
+        const user = record._fields[record._fieldLookup.user]
+        const user_id = user.identity.low ?? user.identity
+
+        /*
+        user.entries = entries.filter(entry => {
+          return entry.user_id === String(user_id)
+        })
+        */
+
+        user.entries = entries_mapping[user_id] || []
 
       })
 
