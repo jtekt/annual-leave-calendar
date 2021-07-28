@@ -25,7 +25,10 @@ db.once('open', () => {
       if(am && !pm) result.type = "前半休"
       else if(!am && pm) result.type = "後半休"
       else result.type = "有休"
-      console.log(result)
+      //console.log(result)
+      result.save()
+      .then(() => {console.log(`OK`)})
+      .catch(console.log)
     })
 
 

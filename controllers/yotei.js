@@ -5,8 +5,8 @@ const Yotei = require('../models/yotei.js')
 
 dotenv.config()
 
-const mongodb_url = process.env.MONGODB_URL ?? 'mongodb://mongo'
-const mongodb_db = process.env.MONGODB_DB ??'nenkyuu_calendar'
+const mongodb_url = process.env.MONGODB_URL || 'mongodb://mongo'
+const mongodb_db = process.env.MONGODB_DB || 'nenkyuu_calendar'
 const mongodb_options = {
    useUnifiedTopology: true,
    useNewUrlParser: true,
@@ -14,7 +14,18 @@ const mongodb_options = {
 
 global.mongodb_connected = false
 
-mongoose.connect(`${mongodb_url}/${mongodb_db}`, mongodb_options)
+function mongoose_connect(){
+  console.log('[MongoDB] Attempting connection...')
+  mongoose.connect(`${mongodb_url}/${mongodb_db}`, mongodb_options)
+  .then(() => {console.log('Connection successful')})
+  .catch(error => {
+    console.log('Connection failed')
+    setTimeout(mongoose_connect,5000)
+  })
+}
+
+mongoose_connect()
+
 
 const db = mongoose.connection
 db.on('error', console.error.bind(console, 'connection error:'))
@@ -82,7 +93,6 @@ exports.create_entry = (req, res) => {
     return res.status(400).send(`Undefined date`)
   }
 
-  // TODO: AM and PM will always be true
   const new_yotei = {
     user_id : user_id,
     date: date,
