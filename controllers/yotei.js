@@ -1,43 +1,8 @@
 const dotenv = require('dotenv')
 const axios = require('axios')
-const mongoose = require('mongoose')
 const Yotei = require('../models/yotei.js')
 
 dotenv.config()
-
-const mongodb_url = process.env.MONGODB_URL || 'mongodb://mongo'
-const mongodb_db = process.env.MONGODB_DB || 'nenkyuu_calendar'
-const mongodb_options = {
-   useUnifiedTopology: true,
-   useNewUrlParser: true,
-}
-
-global.mongodb_connected = false
-
-function mongoose_connect(){
-  console.log('[MongoDB] Attempting connection...')
-  mongoose.connect(`${mongodb_url}/${mongodb_db}`, mongodb_options)
-  .then(() => {console.log('Connection successful')})
-  .catch(error => {
-    console.log('Connection failed')
-    setTimeout(mongoose_connect,5000)
-  })
-}
-
-mongoose_connect()
-
-
-const db = mongoose.connection
-db.on('error', console.error.bind(console, 'connection error:'))
-db.once('open', () => { mongodb_connected = true })
-
-const error_handling = (error, res) => {
-  console.log(error)
-  res.status(500).send('MongoDB error')
-}
-
-exports.mongodb_url = mongodb_url
-exports.mongodb_db = mongodb_db
 
 function get_current_user_id(res){
   return res.locals.user.identity.low
