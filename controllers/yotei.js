@@ -1,18 +1,19 @@
 const dotenv = require('dotenv')
 const axios = require('axios')
 const Yotei = require('../models/yotei.js')
+const { get_id_of_item } = require('../utils.js')
 
 dotenv.config()
 
 function get_current_user_id(res){
-  return res.locals.user.identity.low
-    ?? res.locals.user.identity
+  const current_user = res.locals.user
+  return get_id_of_item(current_user)
 }
 
 exports.get_entries_of_user = (req, res) => {
 
   let user_id = req.params.id
-    ?? get_current_user_id(res)
+    ?? get_current_user_id(res) // risky
 
   if(user_id === 'self') user_id = get_current_user_id(res)
 
@@ -59,8 +60,8 @@ exports.create_entry = (req, res) => {
   }
 
   const new_yotei = {
-    user_id : user_id,
-    date: date,
+    user_id,
+    date,
     type: req.body.type ?? "有休",
     am: req.body.am ?? true,
     pm: req.body.pm ?? true,
@@ -197,9 +198,9 @@ exports.get_entries_of_group = (req, res) => {
   const options = {headers: {Authorization: `Bearer ${jwt}`}}
 
   axios.get(url, options)
-  .then(response => {
+  .then( ({data}) => {
 
-    let user_records = response.data
+    let user_records = data
 
     const queried_year = req.query.year || new Date().getYear() + 1900
     const start_of_year = new Date(`${queried_year}/01/01`)
@@ -210,7 +211,7 @@ exports.get_entries_of_group = (req, res) => {
       $or: user_records.map( record => {
 
         const user = record._fields[record._fieldLookup.user]
-        const user_id = user.identity.low ?? user.identity
+        const user_id = get_id_of_item(user)
 
         return { user_id }
       }),
@@ -255,7 +256,7 @@ exports.get_entries_of_group = (req, res) => {
       // put the entries in the corresponding user records
       user_records.forEach( (record) => {
         const user = record._fields[record._fieldLookup.user]
-        const user_id = user.identity.low ?? user.identity
+        const user_id = get_id_of_item(user)
 
         /*
         user.entries = entries.filter(entry => {

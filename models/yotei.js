@@ -1,6 +1,6 @@
-const mongoose = require('mongoose')
+const {Schema, model} = require('mongoose')
 
-const yoteiSchema = new mongoose.Schema({
+const yoteiSchema = new Schema({
   date: Date,
   user_id: String,
 
@@ -20,6 +20,6 @@ const yoteiSchema = new mongoose.Schema({
 yoteiSchema.index({ date: 1, user_id: 1 }, { unique: true })
 
 
-const Yotei = mongoose.model('yotei', yoteiSchema)
+const Yotei = model('yotei', yoteiSchema)
 
 module.exports = Yotei
