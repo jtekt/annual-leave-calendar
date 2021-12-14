@@ -33,21 +33,23 @@ app.get('/', (req, res) => {
   })
 })
 
-app.route('/groups/:id/entries')
-  .get(auth.authenticate, controller.get_entries_of_group)
+// Authenticate everything from here on
+app.use(auth.authenticate)
 
+app.route('/groups/:group_id/entries')
+  .get(controller.get_entries_of_group)
 
-app.route('/users/:id/entries')
-  .get(auth.authenticate, controller.get_entries_of_user)
-  .post(auth.authenticate, controller.create_entry)
+app.route('/users/:user_id/entries')
+  .get(controller.get_entries_of_user)
+  .post( controller.create_entry)
 
 app.route('/entries')
-  .get(auth.authenticate, controller.get_all_entries)
+  .get(controller.get_all_entries)
 
-app.route('/entries/:id')
-  .get(auth.authenticate, controller.get_single_entry)
-  .put(auth.authenticate, controller.update_entry)
-  .delete(auth.authenticate, controller.delete_entry)
+app.route('/entries/:_id')
+  .get(controller.get_single_entry)
+  .put(controller.update_entry)
+  .delete(controller.delete_entry)
 
 
 app.listen(APP_PORT, () => {

@@ -1,7 +1,10 @@
 const dotenv = require('dotenv')
 const axios = require('axios')
 const Yotei = require('../models/yotei.js')
-const { get_id_of_item } = require('../utils.js')
+const {
+  get_id_of_item,
+  error_handling,
+ } = require('../utils.js')
 
 dotenv.config()
 
@@ -12,8 +15,8 @@ function get_current_user_id(res){
 
 exports.get_entries_of_user = (req, res) => {
 
-  let user_id = req.params.id
-    ?? get_current_user_id(res) // risky
+  let {user_id} = req.params
+  if(user_id === 'self') user_id = get_current_user_id(res)
 
   if(user_id === 'self') user_id = get_current_user_id(res)
 
@@ -42,9 +45,7 @@ exports.get_entries_of_user = (req, res) => {
 
 exports.create_entry = (req, res) => {
 
-  let user_id = req.params.id
-    || get_current_user_id(res)
-
+  let {user_id} = req.params
   if(user_id === 'self') user_id = get_current_user_id(res)
 
   if(!user_id) {
@@ -89,13 +90,16 @@ exports.create_entry = (req, res) => {
 
 exports.get_single_entry = (req, res) => {
 
-  let entry_id = req.params.id
-    || req.params.entry_id
-    || req.params.yotei_id
+  const {_id} = req.params
 
-  Yotei.findById(entry_id)
+  if(!_id) {
+    console.log(`Undefined ID`)
+    return res.status(400).send(`Undefined ID`)
+  }
+
+  Yotei.findById(_id)
   .then(result => {
-    console.log(`[Mongoose] 予定 ${entry_id} queried`)
+    console.log(`[Mongoose] 予定 ${_id} queried`)
     res.send(result)
    })
   .catch(error => { error_handling(error, res) })
@@ -118,18 +122,17 @@ exports.get_all_entries = (req, res) => {
 }
 
 exports.update_entry = (req, res) => {
-  let entry_id = req.params.id
-    || req.params.entry_id
-    || req.params.yotei_id
 
-  if(!entry_id) {
+  const {_id} = req.params
+
+  if(!_id) {
     console.log(`Undefined ID`)
     return res.status(400).send(`Undefined ID`)
   }
 
-  Yotei.updateOne({_id: entry_id}, req.body)
+  Yotei.updateOne({_id}, req.body)
   .then(result => {
-    console.log(`[Mongoose] 予定 ${entry_id} updated`)
+    console.log(`[Mongoose] 予定 ${_id} updated`)
     res.send(result)
   })
   .catch(error => { error_handling(error, res) })
@@ -137,25 +140,23 @@ exports.update_entry = (req, res) => {
 
 exports.delete_entry = (req, res) => {
 
-  let entry_id = req.params.id
-    || req.params.entry_id
-    || req.params.yotei_id
+  const {_id} = req.params
 
-  if(!entry_id) {
+  if(!_id) {
     console.log(`Undefined ID`)
     return res.status(400).send(`Undefined ID`)
   }
 
-  Yotei.deleteOne({_id: entry_id})
+  Yotei.deleteOne({_id})
   .then(result => {
-    console.log(`[Mongoose] 予定 ${entry_id} deleted`)
+    console.log(`[Mongoose] 予定 ${_id} deleted`)
     res.send(result)
   })
   .catch(error => { error_handling(error, res) })
 
 }
 
-exports.get_entries_of_group = (req, res) => {
+exports.get_entries_of_group = async (req, res) => {
 
   /*
   // response format:
@@ -168,116 +169,49 @@ exports.get_entries_of_group = (req, res) => {
   ]
   */
 
-  // Why is there auth here?
-  // Maybe because token needed for group manager request
-  // Idea: have token in middleware
-  if(!('authorization' in req.headers)) {
-    console.log(`Authorization header not set`)
-    res.status(403).send(`Authorization header not set`)
-    return
-  }
+  try {
 
-  const jwt = req.headers.authorization.split(" ")[1]
+    const {group_id} = req.params
+    if(!group_id) throw `Undefined group ID`
 
-  if(!jwt){
-    console.log(`JWT not found`)
-    res.status(403).send(`JWT not found`)
-    return
-  }
+    const url = `${process.env.GROUP_MANAGER_API_URL}/v2/groups/${group_id}/members`
+    const options = {headers: {authorization: req.headers.authorization} }
 
-  const group_id = req.params.id ?? req.params.group_id
-
-  if(!group_id) {
-    console.log(`Undefined group ID`)
-    res.status(400).send(`Undefined group ID`)
-    return
-  }
-
-  // Get group members using API call to group manager microservice
-  const url = `${process.env.GROUP_MANAGER_API_URL}/groups/${group_id}/members`
-  const options = {headers: {Authorization: `Bearer ${jwt}`}}
-
-  axios.get(url, options)
-  .then( ({data}) => {
-
-    let user_records = data
+    const {data: users} = await axios.get(url, options)
 
     const queried_year = req.query.year || new Date().getYear() + 1900
     const start_of_year = new Date(`${queried_year}/01/01`)
     const end_of_year = new Date(`${queried_year}/12/31`)
 
-    // Build a query so as to get yoteis of all members using their ID
     const query = {
-      $or: user_records.map( record => {
-
-        const user = record._fields[record._fieldLookup.user]
-        const user_id = get_id_of_item(user)
-
-        return { user_id }
-      }),
+      $or: users.map( user => ({ user_id: get_id_of_item(user) }) ),
       date: {$gte: start_of_year, $lte: end_of_year}
     }
 
+    const entries = await Yotei.find(query).sort('date')
 
-    Yotei.find(query)
-    .sort('date')
-    .then(entries => {
-
-      /*
-      // Entries format:
-      [
-        {
-          _id: "1234dsfs",
-          user_id: 1223,
-          date: ...
-
-        },
-        {...}
-      ]
-
-      */
-
-      // Create a mapping for entries
-      let entries_mapping = {}
-      entries.forEach((entry) => {
-        if(!entries_mapping[entry.user_id]){
-          entries_mapping[entry.user_id] = []
-        }
-        entries_mapping[entry.user_id].push(entry)
-      })
-
-      /*
-      {
-        21313213: [entry, entry],
-        123535: [entry, entry],
+    let entries_mapping = {}
+    entries.forEach((entry) => {
+      if(!entries_mapping[entry.user_id]){
+        entries_mapping[entry.user_id] = []
       }
-      */
-
-      // put the entries in the corresponding user records
-      user_records.forEach( (record) => {
-        const user = record._fields[record._fieldLookup.user]
-        const user_id = get_id_of_item(user)
-
-        /*
-        user.entries = entries.filter(entry => {
-          return entry.user_id === String(user_id)
-        })
-        */
-
-        user.entries = entries_mapping[user_id] || []
-
-      })
-
-      console.log(`[Mongoose] 予定 of group ${group_id} queried`)
-
-      res.send(user_records)
+      entries_mapping[entry.user_id].push(entry)
     })
-    .catch(error => { error_handling(error, res) })
 
-  })
-  .catch(error => {
+    users.forEach( (user) => {
+      const user_id = get_id_of_item(user)
+      user.entries = entries_mapping[user_id] || []
+    })
+
+    console.log(`[Mongoose] 予定 of group ${group_id} queried`)
+
+    res.send(users)
+
+  }
+  catch (error) {
     console.log(error)
-    res.status(500).send(`Error fetching group`)
-  })
+    res.status(500).send(error)
+
+  }
 
 }
