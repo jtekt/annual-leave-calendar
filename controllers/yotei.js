@@ -174,10 +174,11 @@ exports.get_entries_of_group = async (req, res) => {
     const {group_id} = req.params
     if(!group_id) throw `Undefined group ID`
 
-    const url = `${process.env.GROUP_MANAGER_API_URL}/v2/groups/${group_id}/members`
+    const url = `${process.env.GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
     const options = {headers: {authorization: req.headers.authorization} }
 
-    const {data: users} = await axios.get(url, options)
+    const {data} = await axios.get(url, options)
+    const users = data.items
 
     const queried_year = req.query.year || new Date().getYear() + 1900
     const start_of_year = new Date(`${queried_year}/01/01`)
@@ -198,14 +199,15 @@ exports.get_entries_of_group = async (req, res) => {
       entries_mapping[entry.user_id].push(entry)
     })
 
-    users.forEach( (user) => {
+    const output = users.map( (user) => {
       const user_id = get_id_of_item(user)
       user.entries = entries_mapping[user_id] || []
+      return { user, entries: entries_mapping[user_id] || []}
     })
 
     console.log(`[Mongoose] 予定 of group ${group_id} queried`)
 
-    res.send(users)
+    res.send(output)
 
   }
   catch (error) {
