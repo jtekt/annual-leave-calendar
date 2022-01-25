@@ -158,17 +158,6 @@ exports.delete_entry = (req, res) => {
 
 exports.get_entries_of_group = async (req, res) => {
 
-  /*
-  // response format:
-  [
-    {
-      identity: 123,
-      properties: {},
-      yotei: [],
-    }
-  ]
-  */
-
   try {
 
     const {group_id} = req.params
