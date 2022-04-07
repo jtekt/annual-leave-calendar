@@ -1,177 +1,186 @@
 const dotenv = require('dotenv')
 const axios = require('axios')
 const Yotei = require('../models/yotei.js')
-const {
-  get_id_of_item,
-  error_handling,
- } = require('../utils.js')
+const createHttpError = require('http-errors')
+const { get_id_of_item } = require('../utils.js')
 
 dotenv.config()
 
 function get_current_user_id(res){
-  const current_user = res.locals.user
-  return get_id_of_item(current_user)
+  const {user} = res.locals
+  return get_id_of_item(user)
 }
 
-exports.get_entries_of_user = (req, res) => {
-
-  let {user_id} = req.params
-  if(user_id === 'self') user_id = get_current_user_id(res)
-
-  if(user_id === 'self') user_id = get_current_user_id(res)
+exports.get_entries_of_user = async (req, res, next) => {
+  try {
+    let {user_id} = req.params
+    if(user_id === 'self') user_id = get_current_user_id(res)
 
 
-  if(!user_id) {
-    console.log(`Undefined user ID`)
-    res.status(400).send(`Undefined user ID`)
-    return
-  }
+    if(!user_id) throw createHttpError(400, `User ID not provided`)
 
-  const queried_year = req.query.year || new Date().getYear() + 1900
-  const start_of_year = new Date(`${queried_year}/01/01`)
-  const end_of_year = new Date(`${queried_year}/12/31`)
+    const {
+      year = new Date().getYear() + 1900
+    } = req.query
 
-  const query = { user_id, date: {$gte: start_of_year, $lte: end_of_year} }
+    const start_of_year = new Date(`${year}/01/01`)
+    const end_of_year = new Date(`${year}/12/31`)
 
-  Yotei.find(query)
-  .sort('date')
-  .then(results => {
+    const query = { user_id, date: {$gte: start_of_year, $lte: end_of_year} }
+
+    const entries = await Yotei
+      .find(query)
+      .sort('date')
+
     console.log(`[Mongoose] 予定 of user ${user_id} queried`)
-    res.send(results)
-  })
-  .catch(error => { error_handling(error, res) })
+    res.send(entries)
+  }
+  catch (error) {
+    next(error)
+  }
+
+
 
 }
 
-exports.create_entry = (req, res) => {
+exports.create_entry = async (req, res, next) => {
 
-  let {user_id} = req.params
-  if(user_id === 'self') user_id = get_current_user_id(res)
+  try {
+    const {
+      date,
+      type = '有休',
+      am = true,
+      pm = true,
+      taken = false,
+      refresh = false,
+      plus_one = false,
+    } = req.body
 
-  if(!user_id) {
-    console.log(`Undefined user ID`)
-    return res.status(400).send(`Undefined user ID`)
-  }
+    let {user_id} = req.params
+    if(user_id === 'self') user_id = get_current_user_id(res)
 
-  const date = req.body.date
+    if(!user_id) throw createHttpError(400, `User ID not provided`)
+    if(!date) throw createHttpError(400, `Date not provided`)
 
-  if(!date) {
-    console.log(`Undefined date`)
-    return res.status(400).send(`Undefined date`)
-  }
 
-  const new_yotei = {
-    user_id,
-    date,
-    type: req.body.type ?? "有休",
-    am: req.body.am ?? true,
-    pm: req.body.pm ?? true,
-    taken: req.body.taken ?? false,
-    refresh:req.body.refresh ?? false,
-    plus_one: req.body.plus_one ?? false,
-  }
-
-  Yotei.create(new_yotei)
-  .then(result => {
-    console.log(`[Mongoose] 予定 ${result._id} created for user ${user_id}`)
-    res.send(result)
-   })
-  .catch(error => {
-    if(error.code === 11000) {
-      res.status(400).send(`その日にはもう予定が存在してます`)
-      console.log(`[Mongoose] 予定 already exists`)
-    }
-    else {
-      error_handling(error)
+    const entry_properties = {
+      user_id,
+      date,
+      type,
+      am,
+      pm,
+      taken,
+      refresh,
+      plus_one,
     }
 
-  })
-}
+    const entry = await Yotei.create(entry_properties)
 
-exports.get_single_entry = (req, res) => {
-
-  const {_id} = req.params
-
-  if(!_id) {
-    console.log(`Undefined ID`)
-    return res.status(400).send(`Undefined ID`)
+    console.log(`[Mongoose] Entry ${entry._id} created for user ${user_id}`)
+    res.send(entry)
+  }
+  catch (error) {
+    next(error)
   }
 
-  Yotei.findById(_id)
-  .then(result => {
-    console.log(`[Mongoose] 予定 ${_id} queried`)
-    res.send(result)
-   })
-  .catch(error => { error_handling(error, res) })
 }
 
-exports.get_all_entries = (req, res) => {
+exports.get_single_entry = async (req, res, next) => {
 
-  let query = req.query
+  try {
+    const {_id} = req.params
 
-  // Dirty
-  try { query.date = JSON.parse(query.date) }
-  catch (e) {}
+    if(!_id) throw createHttpError(400, `ID is not provided`)
 
-  Yotei.find(query)
-  .then(result => {
+    const entry = await Yotei.findById(_id)
+
+    console.log(`[Mongoose] 予定 ${entry._id} queried`)
+    res.send(entry)
+  }
+  catch (error) {
+    next(error)
+  }
+
+
+}
+
+exports.get_all_entries = async (req, res, next) => {
+
+  try {
+    let {query} = req
+
+    // Dirty
+    try { query.date = JSON.parse(query.date) }
+    catch (e) {}
+
+    const entries = await Yotei.find(query)
+
     console.log(`[Mongoose] Queried all 予定`)
-    res.send(result)
-   })
-  .catch(error => { error_handling(error, res) })
-}
-
-exports.update_entry = (req, res) => {
-
-  const {_id} = req.params
-
-  if(!_id) {
-    console.log(`Undefined ID`)
-    return res.status(400).send(`Undefined ID`)
+    res.send(entries)
+  }
+  catch (error) {
+    next(error)
   }
 
-  Yotei.updateOne({_id}, req.body)
-  .then(result => {
+
+}
+
+exports.update_entry = async (req, res, next) => {
+
+  try {
+    const {_id} = req.params
+
+    if(!_id) throw createHttpError(400, `ID is not provided`)
+
+    const result = await Yotei.updateOne({_id}, req.body)
+
     console.log(`[Mongoose] 予定 ${_id} updated`)
     res.send(result)
-  })
-  .catch(error => { error_handling(error, res) })
-}
-
-exports.delete_entry = (req, res) => {
-
-  const {_id} = req.params
-
-  if(!_id) {
-    console.log(`Undefined ID`)
-    return res.status(400).send(`Undefined ID`)
+  }
+  catch (error) {
+    next(error)
   }
 
-  Yotei.deleteOne({_id})
-  .then(result => {
+}
+
+exports.delete_entry = async (req, res, next) => {
+
+  try {
+    const {_id} = req.params
+
+    if(!_id) throw createHttpError(400, `ID is not provided`)
+
+    const result = await Yotei.deleteOne({_id})
+
     console.log(`[Mongoose] 予定 ${_id} deleted`)
     res.send(result)
-  })
-  .catch(error => { error_handling(error, res) })
+  }
+  catch (error) {
+    next(error)
+  }
+
 
 }
 
-exports.get_entries_of_group = async (req, res) => {
+exports.get_entries_of_group = async (req, res, next) => {
 
   try {
 
     const {group_id} = req.params
-    if(!group_id) throw `Undefined group ID`
+    if(!group_id) throw createHttpError(400, `Group ID is not provided`)
 
     const url = `${process.env.GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-    const options = {headers: {authorization: req.headers.authorization} }
+    const headers = {authorization: req.headers.authorization}
 
-    const {data} = await axios.get(url, options)
+    const {data} = await axios.get(url, {headers})
     const users = data.items
 
-    const queried_year = req.query.year || new Date().getYear() + 1900
-    const start_of_year = new Date(`${queried_year}/01/01`)
-    const end_of_year = new Date(`${queried_year}/12/31`)
+    const {
+      year = new Date().getYear() + 1900
+    } = req.query
+
+    const start_of_year = new Date(`${year}/01/01`)
+    const end_of_year = new Date(`${year}/12/31`)
 
     const query = {
       $or: users.map( user => ({ user_id: get_id_of_item(user) }) ),
@@ -180,6 +189,7 @@ exports.get_entries_of_group = async (req, res) => {
 
     const entries = await Yotei.find(query).sort('date')
 
+    // Could maybe be achieved using reduce
     let entries_mapping = {}
     entries.forEach((entry) => {
       if(!entries_mapping[entry.user_id]){
@@ -200,9 +210,7 @@ exports.get_entries_of_group = async (req, res) => {
 
   }
   catch (error) {
-    console.log(error)
-    res.status(500).send(error)
-
+    next(error)
   }
 
 }

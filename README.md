@@ -1,5 +1,11 @@
-# 年休カレンダー
+# 年休カレンダー / Annual leave calendar
 
+This is a 年休カレンダー (Annual leave calendar), an application to keep track of the annual leaves of employees.
+It consists of a Node.js application which performs CRUD operations on paid leave records in a MongoDB database using the Mongoose ORM.
+Those operations are performed via a RESTful API, built using the Express framework.
+This application is built in a microservice architecture and this repository only involves the core back-end service.
+Authentication, the management of users and their groups are handled by other independent services.
+Similarily, the dedicated GUI for this application is developed independently and is the object of its own repository.
 
 ## API
 | Endpoint | Method | body/query | Description
@@ -12,12 +18,6 @@
 | /users/:id/entries | GET | - | Gets the entries of the user with the given ID |
 | /users/:id/entries | POST | {date: DATE} | Creates an entry for the user with the given ID |
 | /groups/:id/entries | GET | - | Gets the entries of the group with the given ID |
-
-Note: all requests must be done with a valid token provided in the authorization header in the following form:
-
-```
-Authorization: Bearer YOUR_TOKEN_HERE
-```
 
 ## Environment variables
 
