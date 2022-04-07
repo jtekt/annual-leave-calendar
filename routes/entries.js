@@ -4,7 +4,7 @@ const {
   get_single_entry,
   update_entry,
   delete_entry,
-} = require('../controllers/yotei.js')
+} = require('../controllers/entries.js')
 
 const router = Router()
 

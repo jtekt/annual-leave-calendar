@@ -1,6 +1,6 @@
 const dotenv = require('dotenv')
 const axios = require('axios')
-const Yotei = require('../models/yotei.js')
+const Entry = require('../models/entry.js')
 const createHttpError = require('http-errors')
 const { get_id_of_item } = require('../utils.js')
 
@@ -28,7 +28,7 @@ exports.get_entries_of_user = async (req, res, next) => {
 
     const query = { user_id, date: {$gte: start_of_year, $lte: end_of_year} }
 
-    const entries = await Yotei
+    const entries = await Entry
       .find(query)
       .sort('date')
 
@@ -74,7 +74,7 @@ exports.create_entry = async (req, res, next) => {
       plus_one,
     }
 
-    const entry = await Yotei.create(entry_properties)
+    const entry = await Entry.create(entry_properties)
 
     console.log(`[Mongoose] Entry ${entry._id} created for user ${user_id}`)
     res.send(entry)
@@ -92,7 +92,7 @@ exports.get_single_entry = async (req, res, next) => {
 
     if(!_id) throw createHttpError(400, `ID is not provided`)
 
-    const entry = await Yotei.findById(_id)
+    const entry = await Entry.findById(_id)
 
     console.log(`[Mongoose] 予定 ${entry._id} queried`)
     res.send(entry)
@@ -113,7 +113,7 @@ exports.get_all_entries = async (req, res, next) => {
     try { query.date = JSON.parse(query.date) }
     catch (e) {}
 
-    const entries = await Yotei.find(query)
+    const entries = await Entry.find(query)
 
     console.log(`[Mongoose] Queried all 予定`)
     res.send(entries)
@@ -132,7 +132,7 @@ exports.update_entry = async (req, res, next) => {
 
     if(!_id) throw createHttpError(400, `ID is not provided`)
 
-    const result = await Yotei.updateOne({_id}, req.body)
+    const result = await Entry.updateOne({_id}, req.body)
 
     console.log(`[Mongoose] 予定 ${_id} updated`)
     res.send(result)
@@ -150,7 +150,7 @@ exports.delete_entry = async (req, res, next) => {
 
     if(!_id) throw createHttpError(400, `ID is not provided`)
 
-    const result = await Yotei.deleteOne({_id})
+    const result = await Entry.deleteOne({_id})
 
     console.log(`[Mongoose] 予定 ${_id} deleted`)
     res.send(result)
@@ -187,7 +187,7 @@ exports.get_entries_of_group = async (req, res, next) => {
       date: {$gte: start_of_year, $lte: end_of_year}
     }
 
-    const entries = await Yotei.find(query).sort('date')
+    const entries = await Entry.find(query).sort('date')
 
     // Could maybe be achieved using reduce
     let entries_mapping = {}

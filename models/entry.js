@@ -1,6 +1,6 @@
 const {Schema, model} = require('mongoose')
 
-const yoteiSchema = new Schema({
+const schema = new Schema({
   date: Date,
   user_id: String,
 
@@ -15,9 +15,9 @@ const yoteiSchema = new Schema({
 
 })
 
-yoteiSchema.index({ date: 1, user_id: 1 }, { unique: true })
+schema.index({ date: 1, user_id: 1 }, { unique: true })
 
 
-const Yotei = model('yotei', yoteiSchema)
+const Model = model('yotei', schema)
 
-module.exports = Yotei
+module.exports = Model

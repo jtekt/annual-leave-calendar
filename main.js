@@ -1,12 +1,15 @@
 const express = require('express')
-const bodyParser = require('body-parser')
 const cors = require('cors')
 const dotenv = require('dotenv')
 const {author, version} = require('./package.json')
 const auth = require('@moreillon/authentication_middleware')
 const db = require('./db.js')
-const controller = require('./controllers/yotei.js')
 const entries_router = require('./routes/entries.js')
+const {
+  get_entries_of_group,
+  get_entries_of_user,
+  create_entry,
+} = require('./controllers/entries.js')
 
 dotenv.config()
 
@@ -21,7 +24,7 @@ const {
 const app = express()
 
 // provide express with the ability to read json request bodies
-app.use(bodyParser.json())
+app.use(express.json())
 
 // Authorize requests from different origins
 app.use(cors())
@@ -46,15 +49,13 @@ app.get('/', (req, res) => {
 app.use(auth.authenticate)
 
 app.route('/groups/:group_id/entries')
-  .get(controller.get_entries_of_group)
+  .get(get_entries_of_group)
 
 app.route('/users/:user_id/entries')
-  .get(controller.get_entries_of_user)
-  .post( controller.create_entry)
+  .get(get_entries_of_user)
+  .post(create_entry)
 
 app.use('/entries', entries_router)
-
-
 
 app.listen(APP_PORT, () => {
   console.log(`[Express] listening on port ${APP_PORT}`)
