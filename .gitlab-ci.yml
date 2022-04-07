@@ -11,6 +11,7 @@ variables:
   CONTAINER_IMAGE: ${AWS_ECR_URL}/${APPLICATION_NAME}
   CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
   K8S_SERVICE_PORT: 30514
+  K8S_ECR_SECRET_NAME: ecr-credentials
 
 build:
   stage: build
@@ -44,6 +45,17 @@ deploy:
     - dind
   only:
     - master
+  before_script:
+    # Create a secret with ECR credentials for K8s to pull
+    # Here, we use apply to update it
+    # https://stackoverflow.com/questions/47369351/kubectl-apply-vs-kubectl-create
+    - >
+      kubectl create secret docker-registry ${K8S_ECR_SECRET_NAME}
+      --docker-server=${AWS_ECR_URL}
+      --docker-username=AWS
+      --docker-password $(aws ecr get-login-password)
+      --dry-run=client -o yaml
+      | kubectl apply -f -
   script:
     # create/update the k8s resources
     - envsubst < kubernetes_manifest.yml | kubectl apply -f -
