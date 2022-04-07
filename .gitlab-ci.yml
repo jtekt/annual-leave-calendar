@@ -1,35 +1,52 @@
 stages:
-  - containerization
-  - deployment
+  - build
+  - deploy
+
+image: moreillon/ci-dind:4bca50d7
+services:
+  - name: docker:19.03.12-dind
 
 variables:
   APPLICATION_NAME: nenkyuu-calendar
-  KUBERNETES_PORT: 30514
+  CONTAINER_IMAGE: ${AWS_ECR_URL}/${APPLICATION_NAME}
+  CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
+  K8S_SERVICE_PORT: 30514
 
-  # Container image will be stored on Docker HUb
-  CONTAINER_IMAGE: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
-
-containerization:
-  stage: containerization
+build:
+  stage: build
   tags:
-    - moreillon
+    - dind
+  only:
+    - master
+  before_script:
+    # Create repository if needed
+    - >
+      aws ecr create-repository --repository-name ${APPLICATION_NAME}
+      || echo "Repository might have already existed"
+    # Log in to the registry (AWS credentials are stored as GitLab env variables)
+    - >
+      aws ecr get-login-password
+      | docker login
+      --username AWS
+      --password-stdin
+      ${AWS_ECR_URL}
   script:
-    # Docker Hub login
-    - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
     # Building the container image
     - docker build -t ${CONTAINER_IMAGE} .
+    - docker tag ${CONTAINER_IMAGE} ${CONTAINER_IMAGE_TAGGED}
     # Push the container image to the container registry
     - docker push ${CONTAINER_IMAGE}
+    - docker push ${CONTAINER_IMAGE_TAGGED}
 
-deployment:
-  stage: deployment
+deploy:
+  stage: deploy
   tags:
-    - moreillon
+    - dind
+  only:
+    - master
   script:
-    # create/update the deployment
-    # - envsubst < kubernetes_manifest.yml | kubectl apply -f -
-    # Pull latest image of deployment
-    - kubectl rollout restart deployment/${APPLICATION_NAME}
+    # create/update the k8s resources
+    - envsubst < kubernetes_manifest.yml | kubectl apply -f -
   environment:
     name: production
     kubernetes:

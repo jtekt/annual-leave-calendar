@@ -14,10 +14,14 @@ spec:
     spec:
       containers:
       - name: ${APPLICATION_NAME}
-        image: ${CONTAINER_IMAGE}
-        imagePullPolicy: Always
+        image: ${CONTAINER_IMAGE_TAGGED}
         ports:
         - containerPort: 80
+        envFrom:
+        - secretRef:
+           name: environment-variables
+      imagePullSecrets:
+      - name: ${K8S_ECR_SECRET_NAME}
 ---
 apiVersion: v1
 kind: Service
@@ -26,7 +30,7 @@ metadata:
 spec:
   ports:
   - port: 80
-    nodePort: ${KUBERNETES_PORT}
+    nodePort: ${K8S_SERVICE_PORT}
   selector:
     app: ${APPLICATION_NAME}
   type: NodePort
