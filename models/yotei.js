@@ -5,13 +5,14 @@ const yoteiSchema = new Schema({
   user_id: String,
 
   taken: Boolean,
-  am: Boolean,
-  pm: Boolean,
+  type: String,
+
+  am: Boolean, // Legacy
+  pm: Boolean, // Legacy
 
   refresh: Boolean,
   plus_one: Boolean,
 
-  type: String,
 })
 
 yoteiSchema.index({ date: 1, user_id: 1 }, { unique: true })
