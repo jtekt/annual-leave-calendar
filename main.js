@@ -2,7 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const dotenv = require('dotenv')
 const {author, version} = require('./package.json')
-const auth = require('@moreillon/authentication_middleware')
+const auth = require('@moreillon/express_identification_middleware')
 const db = require('./db.js')
 const entries_router = require('./routes/entries.js')
 const {
@@ -16,7 +16,7 @@ dotenv.config()
 
 const {
   APP_PORT = 80,
-  AUTHENTICATION_API_URL = 'UNDEFINED',
+  IDENTIFICATION_URL,
   GROUP_MANAGER_API_URL = 'UNDEFINED',
 } = process.env
 
@@ -34,7 +34,9 @@ app.get('/', (req, res) => {
     application_name: 'Nenkyuu Calendar API',
     author,
     version,
-    authentication_api_url: AUTHENTICATION_API_URL,
+    auth: {
+      identification_url: IDENTIFICATION_URL,
+    },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     mongodb: {
       url: db.url,
@@ -46,7 +48,8 @@ app.get('/', (req, res) => {
 })
 
 // Authenticate everything from here on
-app.use(auth.authenticate)
+const auth_options = { url: IDENTIFICATION_URL }
+app.use(auth(auth_options))
 
 app.route('/groups/:group_id/entries')
   .get(get_entries_of_group)
