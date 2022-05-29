@@ -1,17 +1,15 @@
 const {Schema, model} = require('mongoose')
 
 const schema = new Schema({
-  date: Date,
-  user_id: String,
+  date: {type: Date, required: true},
+  user_id: {type: String, required: true},
+  comment: String,
 
-  taken: Boolean,
-  type: String,
+  taken: {type: Boolean, default: false},
+  type: {type: String, required: true, default: '有休'}, // All day, morning or afternoon
 
-  am: Boolean, // Legacy
-  pm: Boolean, // Legacy
-
-  refresh: Boolean,
-  plus_one: Boolean,
+  refresh: {type: Boolean, default: false},
+  plus_one: {type: Boolean, default: false},
 
 })
 

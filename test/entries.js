@@ -6,8 +6,6 @@ const dotenv = require('dotenv')
 
 dotenv.config()
 
-const collection = 'tdd'
-
 const {
   LOGIN_URL,
   IDENTIFICATION_URL,

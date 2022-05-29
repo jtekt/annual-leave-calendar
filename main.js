@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors')
+const apiMetrics = require('prometheus-api-metrics')
 const dotenv = require('dotenv')
 const {author, version} = require('./package.json')
 const auth = require('@moreillon/express_identification_middleware')
@@ -23,11 +24,10 @@ const {
 
 const app = express()
 
-// provide express with the ability to read json request bodies
 app.use(express.json())
-
-// Authorize requests from different origins
 app.use(cors())
+app.use(apiMetrics())
+
 
 app.get('/', (req, res) => {
   res.send({
