@@ -1,6 +1,6 @@
 {
   "name": "nenkyuu_calendar",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "A microservice to keep track of annual leaves of employees",
   "main": "main.js",
   "scripts": {

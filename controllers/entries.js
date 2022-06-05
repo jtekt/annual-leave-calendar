@@ -164,17 +164,16 @@ exports.delete_entry = async (req, res, next) => {
 
 exports.get_entries_of_group = async (req, res, next) => {
 
+
   try {
 
-    const {group_id} = req.params
-    if(!group_id) throw createHttpError(400, `Group ID is not provided`)
-
+    const { group_id } = req.params
     const url = `${process.env.GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
     const headers = {authorization: req.headers.authorization}
 
-    const {data} = await axios.get(url, {headers})
-    const users = data.items
+    const {data: {items: users}} = await axios.get(url, {headers})
 
+    // TODO: find better way to get year
     const {
       year = new Date().getYear() + 1900
     } = req.query
@@ -182,14 +181,18 @@ exports.get_entries_of_group = async (req, res, next) => {
     const start_of_year = new Date(`${year}/01/01`)
     const end_of_year = new Date(`${year}/12/31`)
 
+    const user_ids = users.map(user => ({ user_id: get_id_of_item(user) }))
+
+    if(!user_ids.length) throw createHttpError(404, `Group ${group_id} appears to be empty`)
+
     const query = {
-      $or: users.map( user => ({ user_id: get_id_of_item(user) }) ),
+      $or: user_ids,
       date: {$gte: start_of_year, $lte: end_of_year}
     }
 
     const entries = await Entry.find(query).sort('date')
 
-    // Could maybe be achieved using reduce
+    // TODO: Could probably be achieved using reduce
     let entries_mapping = {}
     entries.forEach((entry) => {
       if(!entries_mapping[entry.user_id]){
@@ -204,7 +207,7 @@ exports.get_entries_of_group = async (req, res, next) => {
       return { user, entries: entries_mapping[user_id] || []}
     })
 
-    console.log(`[Mongoose] 予定 of group ${group_id} queried`)
+    console.log(`[Mongoose] Entries of group ${group_id} queried`)
 
     res.send(output)
 
