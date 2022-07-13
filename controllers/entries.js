@@ -106,8 +106,6 @@ exports.get_single_entry = async (req, res, next) => {
 
 exports.get_all_entries = async (req, res, next) => {
 
-  // is this even used?
-
   try {
 
     const {
