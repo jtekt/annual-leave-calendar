@@ -110,8 +110,6 @@ exports.get_all_entries = async (req, res, next) => {
 
   try {
 
-    // Dirty
-    // WHy JSON.parse() ?
     const {
       year = new Date().getFullYear(),
       user_ids,
