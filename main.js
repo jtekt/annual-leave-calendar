@@ -35,7 +35,7 @@ app.get('/', (req, res) => {
     author,
     version,
     auth: {
-      identification_url: IDENTIFICATION_URL,
+      identification_url: IDENTIFICATION_URL || 'Unset',
     },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     mongodb: {
@@ -48,8 +48,11 @@ app.get('/', (req, res) => {
 })
 
 // Authenticate everything from here on
-const auth_options = { url: IDENTIFICATION_URL }
-app.use(auth(auth_options))
+if (IDENTIFICATION_URL) {
+  const auth_options = { url: IDENTIFICATION_URL }
+  app.use(auth(auth_options))
+}
+
 
 app.route('/groups/:group_id/entries')
   .get(get_entries_of_group)

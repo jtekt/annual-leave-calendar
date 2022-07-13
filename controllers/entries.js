@@ -106,17 +106,46 @@ exports.get_single_entry = async (req, res, next) => {
 
 exports.get_all_entries = async (req, res, next) => {
 
+  // is this even used?
+
   try {
-    let {query} = req
 
     // Dirty
-    try { query.date = JSON.parse(query.date) }
-    catch (e) {}
+    // WHy JSON.parse() ?
+    const {
+      year = new Date().getFullYear(),
+      user_ids,
+      limit = 100,
+      skip = 0
 
-    const entries = await Entry.find(query)
+    } = req.query
 
-    console.log(`[Mongoose] Queried all 予定`)
-    res.send(entries)
+    const start_of_year = new Date(`${year}/01/01`)
+    const end_of_year = new Date(`${year}/12/31`)
+
+    const query = {
+      date: { $gte: start_of_year, $lte: end_of_year }
+    }
+
+    if (user_ids) query.$or = user_ids.map((user_id) => ({ user_id }))
+
+    const entries = await Entry
+      .find(query)
+      .skip(Number(skip))
+      .limit(Math.max(Number(limit), 0))
+    
+    const total = await Entry.countDocuments(query)
+
+    const response = {
+      year,
+      limit,
+      skip,
+      total,
+      entries,
+    }
+
+    console.log(`[Mongoose] Queried entries`)
+    res.send(response)
   }
   catch (error) {
     next(error)
@@ -173,9 +202,8 @@ exports.get_entries_of_group = async (req, res, next) => {
 
     const {data: {items: users}} = await axios.get(url, {headers})
 
-    // TODO: find better way to get year
     const {
-      year = new Date().getYear() + 1900
+      year = new Date().getFullYear()
     } = req.query
 
     const start_of_year = new Date(`${year}/01/01`)
