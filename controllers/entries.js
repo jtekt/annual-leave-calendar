@@ -20,13 +20,15 @@ exports.get_entries_of_user = async (req, res, next) => {
     if(!user_id) throw createHttpError(400, `User ID not provided`)
 
     const {
-      year = new Date().getYear() + 1900
+      year = new Date().getFullYear() ,
+      start_date,
+      end_date
     } = req.query
-
-    const start_of_year = new Date(`${year}/01/01`)
-    const end_of_year = new Date(`${year}/12/31`)
-
-    const query = { user_id, date: {$gte: start_of_year, $lte: end_of_year} }
+  
+    const start_of_date = (start_date) ? new Date(start_date) : new Date(`${year}/01/01`)
+    const end_of_date = (end_date) ? new Date(end_date) : new Date(`${year}/12/31`)
+  
+    const query = { user_id, date: {$gte: start_of_date, $lte: end_of_date} }
 
     const entries = await Entry
       .find(query)
@@ -110,17 +112,19 @@ exports.get_all_entries = async (req, res, next) => {
 
     const {
       year = new Date().getFullYear(),
+      start_date,
+      end_date,
       user_ids,
       limit = 100,
       skip = 0
 
     } = req.query
 
-    const start_of_year = new Date(`${year}/01/01`)
-    const end_of_year = new Date(`${year}/12/31`)
+    const start_of_date = (start_date) ? new Date(start_date) : new Date(`${year}/01/01`)
+    const end_of_date = (end_date) ? new Date(end_date) : new Date(`${year}/12/31`)
 
     const query = {
-      date: { $gte: start_of_year, $lte: end_of_year }
+      date: { $gte: start_of_date, $lte: end_of_date }
     }
 
     if (user_ids) query.$or = user_ids.map((user_id) => ({ user_id }))
@@ -133,7 +137,8 @@ exports.get_all_entries = async (req, res, next) => {
     const total = await Entry.countDocuments(query)
 
     const response = {
-      year,
+      start_of_date,
+      end_of_date,
       limit,
       skip,
       total,
@@ -199,11 +204,13 @@ exports.get_entries_of_group = async (req, res, next) => {
     const {data: {items: users}} = await axios.get(url, {headers})
 
     const {
-      year = new Date().getFullYear()
+      year = new Date().getFullYear(),
+      start_date,
+      end_date
     } = req.query
 
-    const start_of_year = new Date(`${year}/01/01`)
-    const end_of_year = new Date(`${year}/12/31`)
+    const start_of_date = (start_date) ? new Date(start_date) : new Date(`${year}/01/01`)
+    const end_of_date = (end_date) ? new Date(end_date) : new Date(`${year}/12/31`)
 
     const user_ids = users.map(user => ({ user_id: get_id_of_item(user) }))
 
@@ -211,7 +218,7 @@ exports.get_entries_of_group = async (req, res, next) => {
 
     const query = {
       $or: user_ids,
-      date: {$gte: start_of_year, $lte: end_of_year}
+      date: {$gte: start_of_date, $lte: end_of_date}
     }
 
     const entries = await Entry.find(query).sort('date')
