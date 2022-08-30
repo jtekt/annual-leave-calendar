@@ -97,7 +97,7 @@ exports.create_entries = async (req, res, next) => {
     if(entries.some(({date})=>!date)) throw createHttpError(400, `User ID not provided`)
 
     const result = await Entry.insertMany(entries)
-
+    console.log(`[Mongoose] created entries`)
     res.send(result)
   }
   catch (error) {
@@ -224,7 +224,7 @@ exports.update_entries = async (req, res, next) => {
     // Could consider using a for loop and updateOne with upsert
     // However, this would seriously impact performance
     const result = await Entry.collection.bulkWrite(bulkOps)
-
+    console.log(`[Mongoose] updated entries`)
     res.send(result)
   }
   catch (error) {
@@ -274,7 +274,7 @@ exports.delete_entries = async (req, res, next) => {
     // Could consider using a for loop and updateOne with upsert
     // However, this would seriously impact performance
     const result = await Entry.collection.bulkWrite(bulkOps)
-
+    console.log(`[Mongoose] deleted entries`)
     res.send(result)
   }
   catch (error) {
