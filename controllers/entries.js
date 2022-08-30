@@ -3,6 +3,7 @@ const axios = require('axios')
 const Entry = require('../models/entry.js')
 const createHttpError = require('http-errors')
 const { get_id_of_item } = require('../utils.js')
+const mongoose = require('mongoose');
 
 dotenv.config()
 
@@ -80,6 +81,24 @@ exports.create_entry = async (req, res, next) => {
 
     console.log(`[Mongoose] Entry ${entry._id} created for user ${user_id}`)
     res.send(entry)
+  }
+  catch (error) {
+    next(error)
+  }
+
+}
+
+exports.create_entries = async (req, res, next) => {
+
+  try {
+    const entries = req.body
+
+    if(entries.some(({user_id})=>!user_id)) throw createHttpError(400, `User ID not provided`)
+    if(entries.some(({date})=>!date)) throw createHttpError(400, `User ID not provided`)
+
+    const result = await Entry.insertMany(entries)
+
+    res.send(result)
   }
   catch (error) {
     next(error)
@@ -173,6 +192,48 @@ exports.update_entry = async (req, res, next) => {
 
 }
 
+exports.update_entries = async (req, res, next) => {
+  
+  try {
+    const entries = req.body
+    
+    if(entries.some(({_id})=>!_id)) throw createHttpError(400, `_id not provided`)
+    if(entries.some(({type})=>!type)) throw createHttpError(400, `type not provided`)
+
+    const bulkOps = entries.map((entry) => {
+
+      const {
+        type,
+      } = entry
+
+      let opts = {
+        updateOne: {
+          filter: {
+            _id: mongoose.Types.ObjectId(entry._id),
+          },
+          update: { $set: {
+            type: String(type),
+          }},
+        }
+      }
+
+      return opts
+    })
+
+    // Warning: bulkWrite does not apply validation
+    // Could consider using a for loop and updateOne with upsert
+    // However, this would seriously impact performance
+    const result = await Entry.collection.bulkWrite(bulkOps)
+
+    res.send(result)
+  }
+  catch (error) {
+    next(error)
+  }
+
+}
+
+
 exports.delete_entry = async (req, res, next) => {
 
   try {
@@ -188,8 +249,39 @@ exports.delete_entry = async (req, res, next) => {
   catch (error) {
     next(error)
   }
+}
 
 
+exports.delete_entries = async (req, res, next) => {
+
+  try {
+    const entries = req.body
+    console.log(entries)
+
+    
+    if(entries.some(({_id})=>!_id)) throw createHttpError(400, `_id not provided`)
+
+    const bulkOps = entries.map(({_id}) => {
+      let opts = {
+        deleteOne: {
+          filter: {
+            _id: mongoose.Types.ObjectId(_id),
+          },
+        }
+      }
+      return opts
+    })
+
+    // Warning: bulkWrite does not apply validation
+    // Could consider using a for loop and updateOne with upsert
+    // However, this would seriously impact performance
+    const result = await Entry.collection.bulkWrite(bulkOps)
+
+    res.send(result)
+  }
+  catch (error) {
+    next(error)
+  }
 }
 
 exports.get_entries_of_group = async (req, res, next) => {
