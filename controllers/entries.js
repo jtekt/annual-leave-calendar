@@ -255,13 +255,11 @@ exports.delete_entry = async (req, res, next) => {
 exports.delete_entries = async (req, res, next) => {
 
   try {
-    const entries = req.body
-    console.log(entries)
+    const entries = req.query._id
 
-    
-    if(entries.some(({_id})=>!_id)) throw createHttpError(400, `_id not provided`)
+    if(!entries) throw createHttpError(400, `_id not provided`)
 
-    const bulkOps = entries.map(({_id}) => {
+    const bulkOps = entries.map((_id) => {
       let opts = {
         deleteOne: {
           filter: {
