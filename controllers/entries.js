@@ -3,6 +3,7 @@ const axios = require('axios')
 const Entry = require('../models/entry.js')
 const createHttpError = require('http-errors')
 const { get_id_of_item } = require('../utils.js')
+const mongoose = require('mongoose');
 
 dotenv.config()
 
@@ -20,13 +21,15 @@ exports.get_entries_of_user = async (req, res, next) => {
     if(!user_id) throw createHttpError(400, `User ID not provided`)
 
     const {
-      year = new Date().getYear() + 1900
+      year = new Date().getFullYear() ,
+      start_date,
+      end_date
     } = req.query
-
-    const start_of_year = new Date(`${year}/01/01`)
-    const end_of_year = new Date(`${year}/12/31`)
-
-    const query = { user_id, date: {$gte: start_of_year, $lte: end_of_year} }
+  
+    const start_of_date = (start_date) ? new Date(start_date) : new Date(`${year}/01/01`)
+    const end_of_date = (end_date) ? new Date(end_date) : new Date(`${year}/12/31`)
+  
+    const query = { user_id, date: {$gte: start_of_date, $lte: end_of_date} }
 
     const entries = await Entry
       .find(query)
@@ -85,6 +88,24 @@ exports.create_entry = async (req, res, next) => {
 
 }
 
+exports.create_entries = async (req, res, next) => {
+
+  try {
+    const entries = req.body
+
+    if(entries.some(({user_id})=>!user_id)) throw createHttpError(400, `User ID not provided`)
+    if(entries.some(({date})=>!date)) throw createHttpError(400, `User ID not provided`)
+
+    const result = await Entry.insertMany(entries)
+    console.log(`[Mongoose] created entries`)
+    res.send(result)
+  }
+  catch (error) {
+    next(error)
+  }
+
+}
+
 exports.get_single_entry = async (req, res, next) => {
 
   try {
@@ -110,17 +131,19 @@ exports.get_all_entries = async (req, res, next) => {
 
     const {
       year = new Date().getFullYear(),
+      start_date,
+      end_date,
       user_ids,
       limit = 100,
       skip = 0
 
     } = req.query
 
-    const start_of_year = new Date(`${year}/01/01`)
-    const end_of_year = new Date(`${year}/12/31`)
+    const start_of_date = (start_date) ? new Date(start_date) : new Date(`${year}/01/01`)
+    const end_of_date = (end_date) ? new Date(end_date) : new Date(`${year}/12/31`)
 
     const query = {
-      date: { $gte: start_of_year, $lte: end_of_year }
+      date: { $gte: start_of_date, $lte: end_of_date }
     }
 
     if (user_ids) query.$or = user_ids.map((user_id) => ({ user_id }))
@@ -133,7 +156,8 @@ exports.get_all_entries = async (req, res, next) => {
     const total = await Entry.countDocuments(query)
 
     const response = {
-      year,
+      start_of_date,
+      end_of_date,
       limit,
       skip,
       total,
@@ -168,6 +192,48 @@ exports.update_entry = async (req, res, next) => {
 
 }
 
+exports.update_entries = async (req, res, next) => {
+  
+  try {
+    const entries = req.body
+    
+    if(entries.some(({_id})=>!_id)) throw createHttpError(400, `_id not provided`)
+    if(entries.some(({type})=>!type)) throw createHttpError(400, `type not provided`)
+
+    const bulkOps = entries.map((entry) => {
+
+      const {
+        type,
+      } = entry
+
+      let opts = {
+        updateOne: {
+          filter: {
+            _id: mongoose.Types.ObjectId(entry._id),
+          },
+          update: { $set: {
+            type: String(type),
+          }},
+        }
+      }
+
+      return opts
+    })
+
+    // Warning: bulkWrite does not apply validation
+    // Could consider using a for loop and updateOne with upsert
+    // However, this would seriously impact performance
+    const result = await Entry.collection.bulkWrite(bulkOps)
+    console.log(`[Mongoose] updated entries`)
+    res.send(result)
+  }
+  catch (error) {
+    next(error)
+  }
+
+}
+
+
 exports.delete_entry = async (req, res, next) => {
 
   try {
@@ -183,8 +249,37 @@ exports.delete_entry = async (req, res, next) => {
   catch (error) {
     next(error)
   }
+}
 
 
+exports.delete_entries = async (req, res, next) => {
+
+  try {
+    const entries = req.query._id
+
+    if(!entries) throw createHttpError(400, `_id not provided`)
+
+    const bulkOps = entries.map((_id) => {
+      let opts = {
+        deleteOne: {
+          filter: {
+            _id: mongoose.Types.ObjectId(_id),
+          },
+        }
+      }
+      return opts
+    })
+
+    // Warning: bulkWrite does not apply validation
+    // Could consider using a for loop and updateOne with upsert
+    // However, this would seriously impact performance
+    const result = await Entry.collection.bulkWrite(bulkOps)
+    console.log(`[Mongoose] deleted entries`)
+    res.send(result)
+  }
+  catch (error) {
+    next(error)
+  }
 }
 
 exports.get_entries_of_group = async (req, res, next) => {
@@ -199,11 +294,13 @@ exports.get_entries_of_group = async (req, res, next) => {
     const {data: {items: users}} = await axios.get(url, {headers})
 
     const {
-      year = new Date().getFullYear()
+      year = new Date().getFullYear(),
+      start_date,
+      end_date
     } = req.query
 
-    const start_of_year = new Date(`${year}/01/01`)
-    const end_of_year = new Date(`${year}/12/31`)
+    const start_of_date = (start_date) ? new Date(start_date) : new Date(`${year}/01/01`)
+    const end_of_date = (end_date) ? new Date(end_date) : new Date(`${year}/12/31`)
 
     const user_ids = users.map(user => ({ user_id: get_id_of_item(user) }))
 
@@ -211,7 +308,7 @@ exports.get_entries_of_group = async (req, res, next) => {
 
     const query = {
       $or: user_ids,
-      date: {$gte: start_of_year, $lte: end_of_year}
+      date: {$gte: start_of_date, $lte: end_of_date}
     }
 
     const entries = await Entry.find(query).sort('date')
