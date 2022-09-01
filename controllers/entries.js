@@ -255,7 +255,7 @@ exports.delete_entry = async (req, res, next) => {
 exports.delete_entries = async (req, res, next) => {
 
   try {
-    const entries = req.query._id
+    const entries = req.query.ids
 
     if(!entries) throw createHttpError(400, `_id not provided`)
 
