@@ -21,6 +21,7 @@ const {
   GROUP_MANAGER_API_URL = 'UNDEFINED',
 } = process.env
 
+db.connect()
 
 const app = express()
 
