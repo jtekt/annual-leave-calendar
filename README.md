@@ -8,24 +8,25 @@ Authentication, the management of users and their groups are handled by other in
 Similarily, the dedicated GUI for this application is developed independently and is the object of its own repository.
 
 ## API
-| Endpoint | Method | body/query | Description
-| --- | --- | --- | --- |
-| / | GET | - | Application info |
-| /entries/ | GET | - | Gets all the entries |
-| /entries/:id | GET | - | Gets the entry with the provided ID |
-| /entries/:id | PUT | entry properties | Updates the entry with the provided ID |
-| /entries/:id | DELETE | - | Deletes the entry with the provided ID |
-| /users/:id/entries | GET | - | Gets the entries of the user with the given ID |
-| /users/:id/entries | POST | {date: DATE} | Creates an entry for the user with the given ID |
-| /groups/:id/entries | GET | - | Gets the entries of the group with the given ID |
+
+| Endpoint            | Method | body/query       | Description                                     |
+| ------------------- | ------ | ---------------- | ----------------------------------------------- |
+| /                   | GET    | -                | Application info                                |
+| /entries/           | GET    | -                | Gets all the entries                            |
+| /entries/:id        | GET    | -                | Gets the entry with the provided ID             |
+| /entries/:id        | PUT    | entry properties | Updates the entry with the provided ID          |
+| /entries/:id        | DELETE | -                | Deletes the entry with the provided ID          |
+| /users/:id/entries  | GET    | -                | Gets the entries of the user with the given ID  |
+| /users/:id/entries  | POST   | {date: DATE}     | Creates an entry for the user with the given ID |
+| /groups/:id/entries | GET    | -                | Gets the entries of the group with the given ID |
 
 ## Environment variables
 
-| variable | Description
-| --- | --- |
-| AUTHENTICATION_API_URL | URL of the authentication service |
-| GROUP_MANAGER_API_URL | URL of the group management service |
-| MONGODB_URL | URL of the MongoDB instance |
-| MONGODB_DB | Name of the MongoDB DB, defaults to 'nenkyuu_calendar' |
-| NEO4J_USERNAME | Username for the Neo4J instance |
-| NEO4J_PASSWORD | Password for the Neo4J instance |
+| variable               | Description                                            |
+| ---------------------- | ------------------------------------------------------ |
+| AUTHENTICATION_API_URL | URL of the authentication service                      |
+| GROUP_MANAGER_API_URL  | URL of the group management service                    |
+| MONGODB_URL            | URL of the MongoDB instance                            |
+| MONGODB_DB             | Name of the MongoDB DB, defaults to 'nenkyuu_calendar' |
+| NEO4J_USERNAME         | Username for the Neo4J instance                        |
+| NEO4J_PASSWORD         | Password for the Neo4J instance                        |
