@@ -1,3 +1,4 @@
+require("express-async-errors")
 const express = require("express")
 const cors = require("cors")
 const apiMetrics = require("prometheus-api-metrics")
@@ -11,7 +12,6 @@ const {
   get_entries_of_user,
   create_entry,
 } = require("./controllers/entries.js")
-require("express-async-errors")
 
 dotenv.config()
 
