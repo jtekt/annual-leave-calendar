@@ -1,5 +1,5 @@
-const {Router} = require('express')
-const {
+import {Router} from 'express'
+import {
   get_all_entries,
   get_single_entry,
   update_entry,
@@ -7,7 +7,7 @@ const {
   delete_entry,
   delete_entries,
   create_entries,
-} = require('../controllers/entries.js')
+} from '../controllers/entries'
 
 const router = Router()
 
@@ -24,4 +24,4 @@ router.route('/:_id')
   .patch(update_entry)
   .delete(delete_entry)
 
-module.exports = router
+export default router

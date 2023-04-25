@@ -1,4 +1,4 @@
-const {Schema, model} = require('mongoose')
+import {Schema, model} from 'mongoose'
 
 const schema = new Schema({
   date: {type: Date, required: true},
@@ -18,4 +18,4 @@ schema.index({ date: 1, user_id: 1 }, { unique: true })
 
 const Model = model('yotei', schema)
 
-module.exports = Model
+export default Model

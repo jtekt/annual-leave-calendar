@@ -1,24 +1,24 @@
-const dotenv = require("dotenv")
-const axios = require("axios")
-const Entry = require("../models/entry.js")
-const createHttpError = require("http-errors")
-const { get_id_of_item } = require("../utils.js")
-const mongoose = require("mongoose")
+import axios from "axios"
+import Entry from "../models/entry"
+import createHttpError from "http-errors"
+import { get_id_of_item } from "../utils"
 
-dotenv.config()
+import mongoose from "mongoose"
 
-function get_current_user_id(res) {
+import { Request, Response } from "express"
+
+function get_current_user_id(res: Response) {
   const { user } = res.locals
   return get_id_of_item(user)
 }
 
-exports.get_entries_of_user = async (req, res) => {
+export const get_entries_of_user = async (req: Request, res: Response) => {
   let { user_id } = req.params
   if (user_id === "self") user_id = get_current_user_id(res)
 
   if (!user_id) throw createHttpError(400, `User ID not provided`)
 
-  const { year = new Date().getFullYear(), start_date, end_date } = req.query
+  const { year = new Date().getFullYear(), start_date, end_date } = req.query as any
 
   const start_of_date = start_date
     ? new Date(start_date)
@@ -33,7 +33,8 @@ exports.get_entries_of_user = async (req, res) => {
   res.send(entries)
 }
 
-exports.create_entry = async (req, res) => {
+
+export const create_entry = async (req: Request, res: Response) => {
   const {
     date,
     type = "有休",
@@ -67,12 +68,12 @@ exports.create_entry = async (req, res) => {
   res.send(entry)
 }
 
-exports.create_entries = async (req, res) => {
+export const create_entries = async (req: Request, res: Response) => {
   const entries = req.body
 
-  if (entries.some(({ user_id }) => !user_id))
+  if (entries.some(({ user_id }: any) => !user_id))
     throw createHttpError(400, `User ID not provided`)
-  if (entries.some(({ date }) => !date))
+  if (entries.some(({ date }: any) => !date))
     throw createHttpError(400, `User ID not provided`)
 
   const result = await Entry.insertMany(entries)
@@ -80,7 +81,7 @@ exports.create_entries = async (req, res) => {
   res.send(result)
 }
 
-exports.get_single_entry = async (req, res) => {
+export const get_single_entry = async (req: Request, res: Response) => {
   const { _id } = req.params
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
@@ -91,7 +92,7 @@ exports.get_single_entry = async (req, res) => {
   res.send(entry)
 }
 
-exports.get_all_entries = async (req, res) => {
+export const get_all_entries = async (req: Request, res: Response) => {
   const {
     year = new Date().getFullYear(),
     start_date,
@@ -99,18 +100,18 @@ exports.get_all_entries = async (req, res) => {
     user_ids,
     limit = 100,
     skip = 0,
-  } = req.query
+  } = req.query as any
 
   const start_of_date = start_date
     ? new Date(start_date)
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const query = {
+  const query: any = {
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
-  if (user_ids) query.$or = user_ids.map((user_id) => ({ user_id }))
+  if (user_ids) query.$or = user_ids.map((user_id: string) => ({ user_id }))
 
   const entries = await Entry.find(query)
     .skip(Number(skip))
@@ -131,7 +132,7 @@ exports.get_all_entries = async (req, res) => {
   res.send(response)
 }
 
-exports.update_entry = async (req, res) => {
+export const update_entry = async (req: Request, res: Response) => {
   const { _id } = req.params
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
@@ -142,15 +143,15 @@ exports.update_entry = async (req, res) => {
   res.send(result)
 }
 
-exports.update_entries = async (req, res) => {
+export const update_entries = async (req: Request, res: Response) => {
   const entries = req.body
 
-  if (entries.some(({ _id }) => !_id))
+  if (entries.some(({ _id }: any) => !_id))
     throw createHttpError(400, `_id not provided`)
-  if (entries.some(({ type }) => !type))
+  if (entries.some(({ type }: any) => !type))
     throw createHttpError(400, `type not provided`)
 
-  const bulkOps = entries.map((entry) => {
+  const bulkOps = entries.map((entry: any) => {
     const { type } = entry
 
     let opts = {
@@ -177,7 +178,7 @@ exports.update_entries = async (req, res) => {
   res.send(result)
 }
 
-exports.delete_entry = async (req, res) => {
+export const delete_entry = async (req: Request, res: Response) => {
   const { _id } = req.params
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
@@ -188,8 +189,8 @@ exports.delete_entry = async (req, res) => {
   res.send(result)
 }
 
-exports.delete_entries = async (req, res) => {
-  const entries = req.query.ids
+export const delete_entries = async (req: Request, res: Response) => {
+  const entries = req.query.ids as any[]
 
   if (!entries) throw createHttpError(400, `_id not provided`)
 
@@ -212,7 +213,7 @@ exports.delete_entries = async (req, res) => {
   res.send(result)
 }
 
-exports.get_entries_of_group = async (req, res) => {
+export const get_entries_of_group = async (req: Request, res: Response) => {
   const { group_id } = req.params
   const url = `${process.env.GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
   const headers = { authorization: req.headers.authorization }
@@ -221,14 +222,14 @@ exports.get_entries_of_group = async (req, res) => {
     data: { items: users },
   } = await axios.get(url, { headers })
 
-  const { year = new Date().getFullYear(), start_date, end_date } = req.query
+  const { year = new Date().getFullYear(), start_date, end_date } = req.query as any
 
   const start_of_date = start_date
     ? new Date(start_date)
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const user_ids = users.map((user) => ({ user_id: get_id_of_item(user) }))
+  const user_ids = users.map((user: any) => ({ user_id: get_id_of_item(user) }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
@@ -241,15 +242,15 @@ exports.get_entries_of_group = async (req, res) => {
   const entries = await Entry.find(query).sort("date")
 
   // TODO: Could probably be achieved using reduce
-  let entries_mapping = {}
-  entries.forEach((entry) => {
+  let entries_mapping : any = {}
+  entries.forEach((entry: any) => {
     if (!entries_mapping[entry.user_id]) {
       entries_mapping[entry.user_id] = []
     }
     entries_mapping[entry.user_id].push(entry)
   })
 
-  const output = users.map((user) => {
+  const output = users.map((user: any) => {
     const user_id = get_id_of_item(user)
     user.entries = entries_mapping[user_id] || []
     return { user, entries: entries_mapping[user_id] || [] }

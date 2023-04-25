@@ -1,9 +1,7 @@
 const mongoose = require('mongoose')
-const dotenv = require('dotenv')
 
-dotenv.config()
 
-const {
+export const {
   MONGODB_URL = 'mongodb://mongo',
   MONGODB_DB = 'nenkyuu_calendar'
 } = process.env
@@ -16,15 +14,16 @@ const mongodb_options = {
 
 mongoose.set('useCreateIndex', true)
 
-const connect = () => {
+export const connect = () => {
 
   const connection_string = `${MONGODB_URL}/${MONGODB_DB}`
   console.log(`[MongoDB] Attempting connection to ${connection_string}`)
 
   mongoose.connect(connection_string, mongodb_options)
     .then(() => { console.log('[Mongoose] Initial connection successful') })
-    .catch(error => {
+    .catch((error: Error) => {
       console.log('[Mongoose] Initial connection failed, retrying...')
+      console.error(error)
       setTimeout(connect, 5000)
     })
 
@@ -32,7 +31,4 @@ const connect = () => {
 
 
 
-exports.url = MONGODB_URL
-exports.db = MONGODB_DB
-exports.connected = () => mongoose.connection.readyState
-exports.connect = connect
+export const connected = () => mongoose.connection.readyState
