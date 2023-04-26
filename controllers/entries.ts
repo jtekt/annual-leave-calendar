@@ -1,24 +1,30 @@
 import axios from "axios"
 import Entry from "../models/entry"
 import createHttpError from "http-errors"
-import { get_id_of_item } from "../utils"
-
+import { getUserId } from "../utils"
 import mongoose from "mongoose"
+import IEntry from "../interfaces/entry"
+import IUser from "../interfaces/user"
 
 import { Request, Response } from "express"
 
+const { GROUP_MANAGER_API_URL } = process.env
+
 function get_current_user_id(res: Response) {
   const { user } = res.locals
-  return get_id_of_item(user)
+  return getUserId(user)
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let { user_id } = req.params
+  let user_id: string | undefined = req.params.user_id
   if (user_id === "self") user_id = get_current_user_id(res)
-
   if (!user_id) throw createHttpError(400, `User ID not provided`)
 
-  const { year = new Date().getFullYear(), start_date, end_date } = req.query as any
+  const {
+    year = new Date().getFullYear(),
+    start_date,
+    end_date,
+  } = req.query as any
 
   const start_of_date = start_date
     ? new Date(start_date)
@@ -33,7 +39,6 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   res.send(entries)
 }
 
-
 export const create_entry = async (req: Request, res: Response) => {
   const {
     date,
@@ -45,10 +50,10 @@ export const create_entry = async (req: Request, res: Response) => {
     plus_one = false,
   } = req.body
 
-  let { user_id } = req.params
+  let user_id: string | undefined = req.params.user_id
   if (user_id === "self") user_id = get_current_user_id(res)
-
   if (!user_id) throw createHttpError(400, `User ID not provided`)
+
   if (!date) throw createHttpError(400, `Date not provided`)
 
   const entry_properties = {
@@ -71,9 +76,9 @@ export const create_entry = async (req: Request, res: Response) => {
 export const create_entries = async (req: Request, res: Response) => {
   const entries = req.body
 
-  if (entries.some(({ user_id }: any) => !user_id))
+  if (entries.some(({ user_id }: IEntry) => !user_id))
     throw createHttpError(400, `User ID not provided`)
-  if (entries.some(({ date }: any) => !date))
+  if (entries.some(({ date }: IEntry) => !date))
     throw createHttpError(400, `User ID not provided`)
 
   const result = await Entry.insertMany(entries)
@@ -146,12 +151,12 @@ export const update_entry = async (req: Request, res: Response) => {
 export const update_entries = async (req: Request, res: Response) => {
   const entries = req.body
 
-  if (entries.some(({ _id }: any) => !_id))
+  if (entries.some(({ _id }: IEntry) => !_id))
     throw createHttpError(400, `_id not provided`)
-  if (entries.some(({ type }: any) => !type))
+  if (entries.some(({ type }: IEntry) => !type))
     throw createHttpError(400, `type not provided`)
 
-  const bulkOps = entries.map((entry: any) => {
+  const bulkOps = entries.map((entry: IEntry) => {
     const { type } = entry
 
     let opts = {
@@ -190,20 +195,17 @@ export const delete_entry = async (req: Request, res: Response) => {
 }
 
 export const delete_entries = async (req: Request, res: Response) => {
-  const entries = req.query.ids as any[]
+  const entryIds = req.query.ids as string[]
 
-  if (!entries) throw createHttpError(400, `_id not provided`)
+  if (!entryIds) throw createHttpError(400, `_id not provided`)
 
-  const bulkOps = entries.map((_id) => {
-    let opts = {
-      deleteOne: {
-        filter: {
-          _id: mongoose.Types.ObjectId(_id),
-        },
+  const bulkOps = entryIds.map((_id) => ({
+    deleteOne: {
+      filter: {
+        _id: mongoose.Types.ObjectId(_id),
       },
-    }
-    return opts
-  })
+    },
+  }))
 
   // Warning: bulkWrite does not apply validation
   // Could consider using a for loop and updateOne with upsert
@@ -215,21 +217,27 @@ export const delete_entries = async (req: Request, res: Response) => {
 
 export const get_entries_of_group = async (req: Request, res: Response) => {
   const { group_id } = req.params
-  const url = `${process.env.GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
+  const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
   const headers = { authorization: req.headers.authorization }
 
   const {
     data: { items: users },
   } = await axios.get(url, { headers })
 
-  const { year = new Date().getFullYear(), start_date, end_date } = req.query as any
+  const {
+    year = new Date().getFullYear(),
+    start_date,
+    end_date,
+  } = req.query as any
 
   const start_of_date = start_date
     ? new Date(start_date)
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const user_ids = users.map((user: any) => ({ user_id: get_id_of_item(user) }))
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserId(user),
+  }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
@@ -241,19 +249,20 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   const entries = await Entry.find(query).sort("date")
 
-  // TODO: Could probably be achieved using reduce
-  let entries_mapping : any = {}
-  entries.forEach((entry: any) => {
-    if (!entries_mapping[entry.user_id]) {
-      entries_mapping[entry.user_id] = []
-    }
+  // TODO: Can be achieved with reduce
+  let entries_mapping: any = {}
+  entries.forEach((entry: IEntry) => {
+    if (!entries_mapping[entry.user_id]) entries_mapping[entry.user_id] = []
     entries_mapping[entry.user_id].push(entry)
   })
 
-  const output = users.map((user: any) => {
-    const user_id = get_id_of_item(user)
-    user.entries = entries_mapping[user_id] || []
-    return { user, entries: entries_mapping[user_id] || [] }
+  const output = users.map((user: IUser) => {
+    const user_id = getUserId(user)
+    if (!user_id) throw "User has no ID"
+    const entries = entries_mapping[user_id] || []
+    // FIXME: Two formats?
+    user.entries = entries
+    return { user, entries }
   })
 
   console.log(`[Mongoose] Entries of group ${group_id} queried`)
