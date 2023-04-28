@@ -249,12 +249,12 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   const entries = await Entry.find(query).sort("date")
 
-  // TODO: Can be achieved with reduce
-  let entries_mapping: any = {}
-  entries.forEach((entry: IEntry) => {
-    if (!entries_mapping[entry.user_id]) entries_mapping[entry.user_id] = []
-    entries_mapping[entry.user_id].push(entry)
-  })
+  const entries_mapping = entries.reduce((prev: any, entry: IEntry) => {
+    const { user_id } = entry
+    if (!prev[user_id]) prev[user_id] = []
+    prev[user_id].push(entry)
+    return prev
+  }, {})
 
   const output = users.map((user: IUser) => {
     const user_id = getUserId(user)
