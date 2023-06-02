@@ -6,16 +6,21 @@ import cors from "cors"
 import apiMetrics from "prometheus-api-metrics"
 import { author, version } from "./package.json"
 import auth from "@moreillon/express_identification_middleware"
-import {MONGODB_URL, MONGODB_DB, connect as dbConnect, connected as dbConnected} from "./db"
+import {
+  MONGODB_URL,
+  MONGODB_DB,
+  connect as dbConnect,
+  connected as dbConnected,
+} from "./db"
 import entries_router from "./routes/entries"
 import {
   get_entries_of_group,
   get_entries_of_user,
   create_entry,
 } from "./controllers/entries"
-
+import swaggerUi from "swagger-ui-express"
+import swaggerDocument from "./swagger-output.json"
 import { Request, Response } from "express"
-
 
 const {
   APP_PORT = 80,
@@ -30,6 +35,7 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 app.use(apiMetrics())
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.get("/", (req: Request, res: Response) => {
   res.send({
