@@ -52,8 +52,8 @@ export const create_entry = async (req: Request, res: Response) => {
 
   let user_id: string | undefined = req.params.user_id
   if (user_id === "self") user_id = get_current_user_id(res)
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
 
+  if (!user_id) throw createHttpError(400, `User ID not provided`)
   if (!date) throw createHttpError(400, `Date not provided`)
 
   const entry_properties = {
@@ -67,9 +67,12 @@ export const create_entry = async (req: Request, res: Response) => {
     plus_one,
   }
 
-  const entry = await Entry.create(entry_properties)
+  const filter = { date, user_id }
+  const options = { new: true, upsert: true }
 
-  console.log(`[Mongoose] Entry ${entry._id} created for user ${user_id}`)
+  const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
+
+  console.log(`[Mongoose] Entry ${entry._id} upserted for user ${user_id}`)
   res.send(entry)
 }
 
