@@ -20,7 +20,7 @@ import {
 } from "./controllers/entries"
 import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
-import { Request, Response } from "express"
+import { Request, Response, NextFunction } from "express"
 
 const {
   APP_PORT = 80,
@@ -68,6 +68,13 @@ app.use("/entries", entries_router)
 
 app.listen(APP_PORT, () => {
   console.log(`[Express] listening on port ${APP_PORT}`)
+})
+
+app.use((error: any, req: Request, res: Response, next: NextFunction) => {
+  console.error(error)
+  let { statusCode = 500, message = error } = error
+  if (isNaN(statusCode) || statusCode > 600) statusCode = 500
+  res.status(statusCode).send(message)
 })
 
 // Export app for TDD
