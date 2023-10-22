@@ -16,6 +16,8 @@ const schema = new Schema<IEntry>({
 })
 
 schema.index({ date: 1, user_id: 1 }, { unique: true })
+schema.index({ user_id: 1 })
+schema.index({ date: 1 })
 
 const Model = model("yotei", schema)
 
