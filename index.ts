@@ -3,7 +3,7 @@ dotenv.config()
 import express from "express"
 import "express-async-errors"
 import cors from "cors"
-import apiMetrics from "prometheus-api-metrics"
+import promBundle from "express-prom-bundle"
 import { author, version } from "./package.json"
 import auth from "@moreillon/express_identification_middleware"
 import {
@@ -28,13 +28,15 @@ const {
   GROUP_MANAGER_API_URL = "UNDEFINED",
 } = process.env
 
+const promOptions = { includeMethod: true, includePath: true }
+
 dbConnect()
 
 const app = express()
 
 app.use(express.json())
 app.use(cors())
-app.use(apiMetrics())
+app.use(promBundle(promOptions))
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.get("/", (req: Request, res: Response) => {
