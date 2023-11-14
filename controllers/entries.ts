@@ -223,9 +223,17 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
   const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
   const headers = { authorization: req.headers.authorization }
 
-  const {
-    data: { items: users },
-  } = await axios.get(url, { headers })
+  let users: any[]
+  try {
+    const { data } = await axios.get(url, { headers })
+    users = data.items
+  } catch (error: any) {
+    const {
+      response = { status: 500, data: "Failed to query group members" },
+    } = error
+    const { status, data } = response
+    throw createHttpError(status, data)
+  }
 
   const {
     year = new Date().getFullYear(),
