@@ -35,7 +35,6 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 
   const entries = await Entry.find(query).sort("date")
 
-  console.log(`[Mongoose] 予定 of user ${user_id} queried`)
   res.send(entries)
 }
 
@@ -72,7 +71,6 @@ export const create_entry = async (req: Request, res: Response) => {
 
   const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
 
-  console.log(`[Mongoose] Entry ${entry._id} upserted for user ${user_id}`)
   res.send(entry)
 }
 
@@ -85,7 +83,6 @@ export const create_entries = async (req: Request, res: Response) => {
     throw createHttpError(400, `User ID not provided`)
 
   const result = await Entry.insertMany(entries)
-  console.log(`[Mongoose] created entries`)
   res.send(result)
 }
 
@@ -96,7 +93,6 @@ export const get_single_entry = async (req: Request, res: Response) => {
 
   const entry = await Entry.findById(_id)
 
-  console.log(`[Mongoose] 予定 ${entry._id} queried`)
   res.send(entry)
 }
 
@@ -136,7 +132,6 @@ export const get_all_entries = async (req: Request, res: Response) => {
     entries,
   }
 
-  console.log(`[Mongoose] Queried entries`)
   res.send(response)
 }
 
@@ -147,7 +142,6 @@ export const update_entry = async (req: Request, res: Response) => {
 
   const result = await Entry.updateOne({ _id }, req.body)
 
-  console.log(`[Mongoose] 予定 ${_id} updated`)
   res.send(result)
 }
 
@@ -182,7 +176,6 @@ export const update_entries = async (req: Request, res: Response) => {
   // Could consider using a for loop and updateOne with upsert
   // However, this would seriously impact performance
   const result = await Entry.collection.bulkWrite(bulkOps)
-  console.log(`[Mongoose] updated entries`)
   res.send(result)
 }
 
@@ -192,8 +185,6 @@ export const delete_entry = async (req: Request, res: Response) => {
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
   const result = await Entry.deleteOne({ _id })
-
-  console.log(`[Mongoose] 予定 ${_id} deleted`)
   res.send(result)
 }
 
@@ -214,7 +205,6 @@ export const delete_entries = async (req: Request, res: Response) => {
   // Could consider using a for loop and updateOne with upsert
   // However, this would seriously impact performance
   const result = await Entry.collection.bulkWrite(bulkOps)
-  console.log(`[Mongoose] deleted entries`)
   res.send(result)
 }
 
@@ -275,8 +265,6 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     user.entries = entries
     return { user, entries }
   })
-
-  console.log(`[Mongoose] Entries of group ${group_id} queried`)
 
   res.send(output)
 }
