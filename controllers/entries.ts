@@ -220,11 +220,11 @@ export const delete_entries = async (req: Request, res: Response) => {
 
 export const get_entries_of_group = async (req: Request, res: Response) => {
   const { group_id } = req.params
-  const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-  const headers = { authorization: req.headers.authorization }
 
   let users: any[]
   try {
+    const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
+    const headers = { authorization: req.headers.authorization }
     const { data } = await axios.get(url, { headers })
     users = data.items
   } catch (error: any) {
