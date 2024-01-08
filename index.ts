@@ -7,8 +7,7 @@ import promBundle from "express-prom-bundle"
 import { author, version } from "./package.json"
 import auth from "@moreillon/express_identification_middleware"
 import {
-  MONGODB_URL,
-  MONGODB_DB,
+  redactedConnectionString,
   connect as dbConnect,
   connected as dbConnected,
 } from "./db"
@@ -49,8 +48,7 @@ app.get("/", (req: Request, res: Response) => {
     },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     mongodb: {
-      url: MONGODB_URL,
-      db: MONGODB_DB,
+      url: redactedConnectionString,
       connected: dbConnected(),
     },
   })
