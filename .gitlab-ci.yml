@@ -4,19 +4,17 @@ stages:
 
 image: moreillon/ci-dind:4bca50d7
 services:
-  - name: docker:19.03.12-dind
+  - name: docker:24.0.7-dind
 
 variables:
-  APPLICATION_NAME: nenkyuu-calendar
+  APPLICATION_NAME: annual-leave-calendar
 
-  CONTAINER_TAG: ${CI_COMMIT_SHORT_SHA}
-  CONTAINER_IMAGE: ${AWS_ECR_URL}/${APPLICATION_NAME}
-  CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CONTAINER_TAG}
-  CONTAINER_IMAGE_DOCKER_HUB: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
-  CONTAINER_IMAGE_DOCKER_HUB_TAGGED: ${CONTAINER_IMAGE_DOCKER_HUB}:${CONTAINER_TAG}
+  CONTAINER_IMAGE: ${AWS_ECR_PUBLIC_URL}/${APPLICATION_NAME}
+  CONTAINER_IMAGE_TEST: ${CONTAINER_IMAGE}:test
+  CONTAINER_IMAGE_LATEST: ${CONTAINER_IMAGE}:latest
+  CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
 
   K8S_SERVICE_PORT: 30514
-  K8S_ECR_SECRET_NAME: ecr-credentials
 
 build:
   stage: build
@@ -25,30 +23,20 @@ build:
   only:
     - master
   before_script:
-    - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
-    # Create repository if needed
+    # Registry login
+    - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ECR_PUBLIC_URL}
+    # Create repository in ECR if it does not exist yet
     - >
-      aws ecr create-repository --repository-name ${APPLICATION_NAME}
+      aws ecr-public create-repository --region us-east-1 --repository-name ${APPLICATION_NAME}
       || echo "Repository might have already existed"
-    # Log in to the registry (AWS credentials are stored as GitLab env variables)
-    - >
-      aws ecr get-login-password
-      | docker login
-      --username AWS
-      --password-stdin
-      ${AWS_ECR_URL}
   script:
     # Building the container image
     - docker build -t ${CONTAINER_IMAGE} .
     # Tagging
     - docker tag ${CONTAINER_IMAGE} ${CONTAINER_IMAGE_TAGGED}
-    - docker tag ${CONTAINER_IMAGE} ${CONTAINER_IMAGE_DOCKER_HUB}
-    - docker tag ${CONTAINER_IMAGE} ${CONTAINER_IMAGE_DOCKER_HUB_TAGGED}
     # Push the container image to the container registry
     - docker push ${CONTAINER_IMAGE}
     - docker push ${CONTAINER_IMAGE_TAGGED}
-    - docker push ${CONTAINER_IMAGE_DOCKER_HUB}
-    - docker push ${CONTAINER_IMAGE_DOCKER_HUB_TAGGED}
 
 deploy:
   stage: deploy
@@ -56,19 +44,7 @@ deploy:
     - dind
   only:
     - master
-  before_script:
-    # Create a secret with ECR credentials for K8s to pull
-    # Here, we use apply to update it
-    # https://stackoverflow.com/questions/47369351/kubectl-apply-vs-kubectl-create
-    - >
-      kubectl create secret docker-registry ${K8S_ECR_SECRET_NAME}
-      --docker-server=${AWS_ECR_URL}
-      --docker-username=AWS
-      --docker-password $(aws ecr get-login-password)
-      --dry-run=client -o yaml
-      | kubectl apply -f -
   script:
-    # create/update the k8s resources
     - envsubst < kubernetes_manifest.yml | kubectl apply -f -
   environment:
     name: production

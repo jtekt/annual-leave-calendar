@@ -1,8 +1,8 @@
-const request = require("supertest")
-const {expect} = require("chai")
-const app = require("../main.js")
-const axios = require('axios')
-const dotenv = require('dotenv')
+import request from "supertest"
+import {expect} from "chai"
+import app from "../index"
+import axios from 'axios'
+import dotenv from 'dotenv'
 
 dotenv.config()
 
@@ -11,7 +11,7 @@ const {
   IDENTIFICATION_URL,
   TEST_USER_USERNAME,
   TEST_USER_PASSWORD,
-} = process.env
+} = process.env as any
 
 const login = async () => {
   const body = {username: TEST_USER_USERNAME, password: TEST_USER_PASSWORD}
@@ -19,7 +19,7 @@ const login = async () => {
   return jwt
 }
 
-const whoami = async (jwt) => {
+const whoami = async (jwt: string) => {
   const headers = {authorization: `bearer ${jwt}`}
   const {data: user} = await axios.get(IDENTIFICATION_URL,{headers})
   return user
@@ -28,7 +28,7 @@ const whoami = async (jwt) => {
 
 describe("/entries", () => {
 
-  let jwt, user, entry_id
+  let jwt: string, user, entry_id: string
 
   before( async () => {
     // Silencing console

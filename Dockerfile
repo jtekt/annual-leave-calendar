@@ -1,17 +1,8 @@
-# Base image on node
-FROM node:16
-
-# Create app directory and move into it
+FROM node:20
 WORKDIR /usr/src/app
-
-# Copy all files into container
 COPY . .
-
-# Install packages
 RUN npm install
-
-# Expose port
+RUN npm run build
+RUN npm run swagger-autogen
 EXPOSE 80
-
-# Run the app
-CMD [ "node", "main.js" ]
+CMD [ "npm", "run", "start"]
