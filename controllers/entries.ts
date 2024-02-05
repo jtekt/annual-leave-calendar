@@ -5,6 +5,7 @@ import { getUserId } from "../utils"
 import mongoose from "mongoose"
 import IEntry from "../interfaces/entry"
 import IUser from "../interfaces/user"
+import { TOTAL_HEADER, DEFAULT_BATCH_SIZE } from "../constants"
 
 import { Request, Response } from "express"
 
@@ -102,7 +103,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
     start_date,
     end_date,
     user_ids,
-    limit = 100,
+    limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
 
@@ -215,25 +216,24 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     year = new Date().getFullYear(),
     start_date,
     end_date,
-    batch_size =100,
-    start_index=0,
-
+    limit = DEFAULT_BATCH_SIZE,
+    skip = 0,
   } = req.query as any
 
   let users: any[]
-  let meta_info: any
+  let total_of_users: number
   try {
     const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
     const headers = { authorization: req.headers.authorization }
     const params = {
-      batch_size ,
-      start_index
+      batch_size: limit,
+      start_index: skip,
     }
-    
+
     const { data } = await axios.get(url, { headers, params })
-    const {items, ...meta} = data
+    const { items, count } = data
     users = items
-    meta_info = meta
+    total_of_users = count
   } catch (error: any) {
     const {
       response = { status: 500, data: "Failed to query group members" },
@@ -242,12 +242,10 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     throw createHttpError(status, data)
   }
 
-
   const start_of_date = start_date
     ? new Date(start_date)
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
-
 
   const user_ids = users.map((user: IUser) => ({
     user_id: getUserId(user),
@@ -279,5 +277,6 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     return { user, entries }
   })
 
-  res.send({...meta_info, start_of_date, end_of_date, items:output})
+  res.setHeader(TOTAL_HEADER, total_of_users)
+  res.send(output)
 }
