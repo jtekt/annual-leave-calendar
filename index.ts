@@ -20,6 +20,7 @@ import {
 import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
+import { TOTAL_HEADER } from "./constants"
 
 const {
   APP_PORT = 80,
@@ -31,10 +32,14 @@ const promOptions = { includeMethod: true, includePath: true }
 
 dbConnect()
 
+const corsOptions = {
+  exposedHeaders: TOTAL_HEADER,
+}
+
 const app = express()
 
 app.use(express.json())
-app.use(cors())
+app.use(cors(corsOptions))
 app.use(promBundle(promOptions))
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
