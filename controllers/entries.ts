@@ -5,6 +5,7 @@ import { getUserId } from "../utils"
 import mongoose from "mongoose"
 import IEntry from "../interfaces/entry"
 import IUser from "../interfaces/user"
+import { TOTAL_HEADER, DEFAULT_BATCH_SIZE } from "../constants"
 
 import { Request, Response } from "express"
 
@@ -102,7 +103,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
     start_date,
     end_date,
     user_ids,
-    limit = 100,
+    limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
 
@@ -211,12 +212,28 @@ export const delete_entries = async (req: Request, res: Response) => {
 export const get_entries_of_group = async (req: Request, res: Response) => {
   const { group_id } = req.params
 
+  const {
+    year = new Date().getFullYear(),
+    start_date,
+    end_date,
+    limit = DEFAULT_BATCH_SIZE,
+    skip = 0,
+  } = req.query as any
+
   let users: any[]
+  let total_of_users: number
   try {
     const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
     const headers = { authorization: req.headers.authorization }
-    const { data } = await axios.get(url, { headers })
-    users = data.items
+    const params = {
+      batch_size: limit,
+      start_index: skip,
+    }
+
+    const { data } = await axios.get(url, { headers, params })
+    const { items, count } = data
+    users = items
+    total_of_users = count
   } catch (error: any) {
     const {
       response = { status: 500, data: "Failed to query group members" },
@@ -224,12 +241,6 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     const { status, data } = response
     throw createHttpError(status, data)
   }
-
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-  } = req.query as any
 
   const start_of_date = start_date
     ? new Date(start_date)
@@ -266,5 +277,6 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     return { user, entries }
   })
 
+  res.setHeader(TOTAL_HEADER, total_of_users)
   res.send(output)
 }
