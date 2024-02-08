@@ -3,7 +3,7 @@ import IEntry from "./interfaces/entry"
 
 export const getUserId = (user: IUser) => user._id || user.properties?._id
 
-export const getUsersEntries = (entries: any[], users: any[]) => {
+export const getEntriesWithUserInfo = (entries: any[], users: any[]) => {
   const entries_mapping = entries.reduce((prev: any, entry: IEntry) => {
     const { user_id } = entry
     if (!prev[user_id]) prev[user_id] = []

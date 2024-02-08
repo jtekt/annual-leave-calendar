@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../models/entry"
 import createHttpError from "http-errors"
-import { getUserId, getUsersEntries, getDates } from "../utils"
+import { getUserId, getEntriesWithUserInfo, getDates } from "../utils"
 import mongoose from "mongoose"
 import IEntry from "../interfaces/entry"
 import IUser from "../interfaces/user"
@@ -252,7 +252,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   const entries = await Entry.find(query).sort("date")
 
-  const output = getUsersEntries(entries, users)
+  const output = getEntriesWithUserInfo(entries, users)
 
   res.setHeader(TOTAL_HEADER, total_of_users)
   res.send(output)
@@ -309,7 +309,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
   const entries = await Entry.find(query).sort("date")
 
-  const output = getUsersEntries(entries, users)
+  const output = getEntriesWithUserInfo(entries, users)
 
   res.setHeader(TOTAL_HEADER, total_of_users)
   res.send(output)
