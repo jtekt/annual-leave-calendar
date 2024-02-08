@@ -16,6 +16,7 @@ import {
   get_entries_of_group,
   get_entries_of_user,
   create_entry,
+  get_entries_of_workplace,
 } from "./controllers/entries"
 import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
@@ -66,6 +67,8 @@ if (IDENTIFICATION_URL) {
 }
 
 app.route("/groups/:group_id/entries").get(get_entries_of_group)
+
+app.route("/workplaces/:workplace_id/entries").get(get_entries_of_workplace)
 
 app.route("/users/:user_id/entries").get(get_entries_of_user).post(create_entry)
 
