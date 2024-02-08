@@ -277,6 +277,14 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     return { user, entries }
   })
 
-  res.setHeader(TOTAL_HEADER, total_of_users)
-  res.send(output)
+  const response = {
+    start_of_date,
+    end_of_date,
+    limit,
+    skip,
+    total: total_of_users,
+    items: output,
+  }
+
+  res.send(response)
 }
