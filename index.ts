@@ -14,6 +14,7 @@ import {
 import entries_router from "./routes/entries"
 import {
   get_entries_of_group,
+  get_entries_of_workplace,
   get_entries_of_user,
   create_entry,
 } from "./controllers/entries"
@@ -66,6 +67,8 @@ if (IDENTIFICATION_URL) {
 }
 
 app.route("/groups/:group_id/entries").get(get_entries_of_group)
+
+app.route("/workplaces/:workplace_id/entries").get(get_entries_of_workplace)
 
 app.route("/users/:user_id/entries").get(get_entries_of_user).post(create_entry)
 
