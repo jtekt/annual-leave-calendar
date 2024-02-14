@@ -6,12 +6,7 @@ import dotenv from "dotenv"
 
 dotenv.config()
 
-const {
-  LOGIN_URL = "",
-  IDENTIFICATION_URL = "",
-  TEST_USER_USERNAME,
-  TEST_USER_PASSWORD,
-} = process.env
+const { LOGIN_URL = "", TEST_USER_USERNAME, TEST_USER_PASSWORD } = process.env
 
 const login = async () => {
   const body = { username: TEST_USER_USERNAME, password: TEST_USER_PASSWORD }
@@ -29,6 +24,7 @@ describe("/entries", () => {
     const res: any = await login()
     jwt = res.jwt
     user = res.user
+    console.log("Login successful")
   })
 
   describe("POST /users/self/entries", () => {
