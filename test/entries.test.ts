@@ -21,10 +21,6 @@ describe("/entries", () => {
   before(async () => {
     // Silencing console
     //console.log = () => {}
-    console.log({
-      TEST_USER_USERNAME,
-      LOGIN_URL,
-    })
     const res: any = await login()
     jwt = res.jwt
     user = res.user

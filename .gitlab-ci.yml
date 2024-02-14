@@ -37,6 +37,7 @@ build:
 
 test:
   stage: test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   tags:
     - dind
   only:
