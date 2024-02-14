@@ -6,7 +6,12 @@ import dotenv from "dotenv"
 
 dotenv.config()
 
-const { LOGIN_URL = "", TEST_USER_USERNAME, TEST_USER_PASSWORD } = process.env
+const {
+  LOGIN_URL = "",
+  TEST_USER_USERNAME,
+  TEST_USER_PASSWORD,
+  TEST_GROUP_ID,
+} = process.env
 
 const login = async () => {
   const body = { username: TEST_USER_USERNAME, password: TEST_USER_PASSWORD }
@@ -69,6 +74,16 @@ describe("/entries", () => {
     it("Should allow the query of an entry", async () => {
       const { status } = await request(app)
         .get(`/entries/${entry_id}`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+  })
+
+  describe("GET /groups/:group_id/entries", () => {
+    it("Should allow the query of an entry", async () => {
+      const { status } = await request(app)
+        .get(`/groups/${TEST_GROUP_ID}/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
