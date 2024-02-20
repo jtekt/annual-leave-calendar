@@ -82,11 +82,20 @@ describe("/entries", () => {
 
   describe("GET /groups/:group_id/entries", () => {
     it("Should allow the query of an entry", async () => {
-      const { status } = await request(app)
+      const { status, body } = await request(app)
         .get(`/groups/${TEST_GROUP_ID}/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
+      expect(body).to.be.an("object")
+    })
+
+    it("Should return an error if wrong group_id is specified", async () => {
+      const { status } = await request(app)
+        .get(`/groups/wrong_id/entries`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(404)
     })
   })
 
