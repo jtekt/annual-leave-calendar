@@ -1,5 +1,7 @@
 stages:
   - build
+  - test
+  - release
   - deploy
 
 image: moreillon/ci-dind:4bca50d7
@@ -30,12 +32,60 @@ build:
       aws ecr-public create-repository --region us-east-1 --repository-name ${APPLICATION_NAME}
       || echo "Repository might have already existed"
   script:
-    # Building the container image
-    - docker build -t ${CONTAINER_IMAGE} .
-    # Tagging
-    - docker tag ${CONTAINER_IMAGE} ${CONTAINER_IMAGE_TAGGED}
-    # Push the container image to the container registry
-    - docker push ${CONTAINER_IMAGE}
+    - docker build -t ${CONTAINER_IMAGE_TEST} .
+    - docker push ${CONTAINER_IMAGE_TEST}
+
+test:
+  stage: test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  tags:
+    - dind
+  only:
+    - master
+  before_script:
+    - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ECR_PUBLIC_URL}
+    # Creating network for TDD
+    - docker network create tdd
+    # Creating DB container in network
+    - >
+      docker run
+      -d
+      --rm
+      --name tdd-db
+      --network tdd
+      --hostname tdd-db
+      mongo:4
+    - sleep 40 # Wait for containers to be available
+  script:
+    - >
+      docker run
+      --rm
+      --name tdd
+      --network tdd
+      -e MONGODB_HOST=tdd-db
+      -e MONGODB_DB=nenkyuu_calendar_banana
+      -e GROUP_MANAGER_API_URL=http://10.115.1.100:31999
+      -e IDENTIFICATION_URL=http://10.115.1.100:30097/v3/users/self
+      -e LOGIN_URL=http://10.115.1.100:30097/v3/auth/login
+      -e TEST_USER_USERNAME=$TEST_USER_USERNAME
+      -e TEST_USER_PASSWORD=$TEST_USER_PASSWORD
+      -e TEST_GROUP_ID=fc12dcd4-e312-43f6-82e3-fdc4f891fb05
+      ${CONTAINER_IMAGE_TEST}
+      npm run coverage
+
+release:
+  stage: release
+  tags:
+    - dind
+  only:
+    - master
+  before_script:
+    - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ECR_PUBLIC_URL}
+  script:
+    - docker pull ${CONTAINER_IMAGE_TEST}
+    - docker tag ${CONTAINER_IMAGE_TEST} ${CONTAINER_IMAGE_LATEST}
+    - docker tag ${CONTAINER_IMAGE_TEST} ${CONTAINER_IMAGE_TAGGED}
+    - docker push ${CONTAINER_IMAGE_LATEST}
     - docker push ${CONTAINER_IMAGE_TAGGED}
 
 deploy:
