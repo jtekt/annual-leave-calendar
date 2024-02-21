@@ -88,6 +88,14 @@ describe("/entries", () => {
 
       expect(status).to.equal(200)
     })
+
+    it("Should return an error if wrong group_id is specified", async () => {
+      const { status } = await request(app)
+        .get(`/groups/wrong_id/entries`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(404)
+    })
   })
 
   describe("PATCH /entries/:entry_id", () => {
