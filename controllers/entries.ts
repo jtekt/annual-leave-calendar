@@ -235,10 +235,8 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     users = items
     total_of_users = count
   } catch (error: any) {
-    const {
-      response = { status: 500, data: "Failed to query group members" },
-    } = error
-    const { status, data } = response
+    const { response = {} } = error
+    const { status = 500, data = "Failed to query group members" } = response
     throw createHttpError(status, data)
   }
 
@@ -300,8 +298,8 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     skip = 0,
   } = req.query as any
 
-  let users: any[] = []
-  let total_of_users: number = 0
+  let users: any[]
+  let total_of_users: number
   try {
     const url = `${WORKPLACE_MANAGER_API_URL}/v2/workplaces/${workplace_id}/employees`
     const headers = { authorization: req.headers.authorization }
@@ -317,10 +315,9 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     users = data
     total_of_users = Number(workplaceResHeader["x-total"])
   } catch (error: any) {
-    const {
-      response = { status: 500, data: "Failed to query workplace members" },
-    } = error
-    const { status, data } = response
+    const { response = {} } = error
+    const { status = 500, data = "Failed to query workplace members" } =
+      response
     throw createHttpError(status, data)
   }
 

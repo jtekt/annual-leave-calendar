@@ -62,11 +62,12 @@ describe("/entries", () => {
 
   describe("GET /users/:user_id/entries", () => {
     it("Should allow the query of entries of a user", async () => {
-      const { status } = await request(app)
+      const { status, body } = await request(app)
         .get(`/users/self/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
+      expect(body).to.have.lengthOf.above(0)
     })
   })
 
