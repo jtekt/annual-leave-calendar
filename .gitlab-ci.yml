@@ -70,6 +70,7 @@ test:
       -e TEST_USER_USERNAME=$TEST_USER_USERNAME
       -e TEST_USER_PASSWORD=$TEST_USER_PASSWORD
       -e TEST_GROUP_ID=fc12dcd4-e312-43f6-82e3-fdc4f891fb05
+      -e TEST_WORKPLACE_ID=abe1ff1a-2578-46a0-b573-bc919daa1401
       ${CONTAINER_IMAGE_TEST}
       npm run coverage
 
