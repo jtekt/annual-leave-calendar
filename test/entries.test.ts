@@ -12,6 +12,7 @@ const {
   TEST_USER_PASSWORD,
   TEST_GROUP_ID,
   TEST_WORKPLACE_ID,
+  WORKPLACE_MANAGER_API_URL,
 } = process.env
 
 const login = async () => {
@@ -93,6 +94,8 @@ describe("/entries", () => {
 
   describe("GET /workplaces/:workplace_id/entries", () => {
     it("Should allow the query of an entry", async () => {
+      console.log(WORKPLACE_MANAGER_API_URL)
+      console.log(TEST_WORKPLACE_ID)
       const { status } = await request(app)
         .get(`/workplaces/${TEST_WORKPLACE_ID}/entries`)
         .set("Authorization", `Bearer ${jwt}`)
