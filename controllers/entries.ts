@@ -9,7 +9,7 @@ import { TOTAL_HEADER, DEFAULT_BATCH_SIZE } from "../constants"
 
 import { Request, Response } from "express"
 
-const { GROUP_MANAGER_API_URL } = process.env
+const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
 function get_current_user_id(res: Response) {
   const { user } = res.locals
@@ -235,10 +235,8 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     users = items
     total_of_users = count
   } catch (error: any) {
-    const {
-      response = { status: 500, data: "Failed to query group members" },
-    } = error
-    const { status, data } = response
+    const { response = {} } = error
+    const { status = 500, data = "Failed to query group members" } = response
     throw createHttpError(status, data)
   }
 
@@ -253,6 +251,87 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   if (!user_ids.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
+
+  const query = {
+    $or: user_ids,
+    date: { $gte: start_of_date, $lte: end_of_date },
+  }
+
+  const entries = await Entry.find(query).sort("date")
+
+  const entries_mapping = entries.reduce((prev: any, entry: IEntry) => {
+    const { user_id } = entry
+    if (!prev[user_id]) prev[user_id] = []
+    prev[user_id].push(entry)
+    return prev
+  }, {})
+
+  const output = users.map((user: IUser) => {
+    const user_id = getUserId(user)
+    if (!user_id) throw "User has no ID"
+    const entries = entries_mapping[user_id] || []
+    // FIXME: Two formats?
+    user.entries = entries
+    return { user, entries }
+  })
+
+  const response = {
+    start_of_date,
+    end_of_date,
+    limit,
+    skip,
+    total: total_of_users,
+    items: output,
+  }
+
+  res.send(response)
+}
+
+export const get_entries_of_workplace = async (req: Request, res: Response) => {
+  const { workplace_id } = req.params
+
+  const {
+    year = new Date().getFullYear(),
+    start_date,
+    end_date,
+    limit = DEFAULT_BATCH_SIZE,
+    skip = 0,
+  } = req.query as any
+
+  let users: any[]
+  let total_of_users: number
+  try {
+    const url = `${WORKPLACE_MANAGER_API_URL}/v2/workplaces/${workplace_id}/employees`
+    const headers = { authorization: req.headers.authorization }
+    const params = {
+      batch_size: limit,
+      start_index: skip,
+    }
+
+    const { data, headers: workplaceResHeader } = await axios.get(url, {
+      headers,
+      params,
+    })
+    users = data
+    total_of_users = Number(workplaceResHeader["x-total"])
+  } catch (error: any) {
+    const { response = {} } = error
+    const { status = 500, data = "Failed to query workplace members" } =
+      response
+    throw createHttpError(status, data)
+  }
+
+  const start_of_date = start_date
+    ? new Date(start_date)
+    : new Date(`${year}/01/01`)
+  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
+
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserId(user),
+  }))
+
+  if (!user_ids.length)
+    throw createHttpError(404, `Workplace ${workplace_id} appears to be empty`)
 
   const query = {
     $or: user_ids,

@@ -11,6 +11,7 @@ const {
   TEST_USER_USERNAME,
   TEST_USER_PASSWORD,
   TEST_GROUP_ID,
+  TEST_WORKPLACE_ID,
 } = process.env
 
 const login = async () => {
@@ -92,6 +93,24 @@ describe("/entries", () => {
     it("Should return an error if wrong group_id is specified", async () => {
       const { status } = await request(app)
         .get(`/groups/wrong_id/entries`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(404)
+    })
+  })
+
+  describe("GET /workplaces/:workplace_id/entries", () => {
+    it("Should allow the query of an entry", async () => {
+      const { status } = await request(app)
+        .get(`/workplaces/${TEST_WORKPLACE_ID}/entries`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+
+    it("Should return an error if wrong workplace_id is specified", async () => {
+      const { status } = await request(app)
+        .get(`/workplaces/wrong_id/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(404)
