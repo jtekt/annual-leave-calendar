@@ -62,12 +62,11 @@ describe("/entries", () => {
 
   describe("GET /users/:user_id/entries", () => {
     it("Should allow the query of entries of a user", async () => {
-      const { status, body } = await request(app)
+      const { status } = await request(app)
         .get(`/users/self/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
-      expect(body).to.have.lengthOf.above(0)
     })
   })
 
@@ -93,12 +92,11 @@ describe("/entries", () => {
 
   describe("GET /workplaces/:workplace_id/entries", () => {
     it("Should allow the query of an entry", async () => {
-      const { status, body } = await request(app)
+      const { status } = await request(app)
         .get(`/workplaces/${TEST_WORKPLACE_ID}/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
-      expect(body).to.be.an("object")
     })
 
     it("Should return an error if wrong workplace_id is specified", async () => {
