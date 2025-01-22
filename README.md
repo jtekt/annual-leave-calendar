@@ -28,5 +28,3 @@ Similarily, the dedicated GUI for this application is developed independently an
 | GROUP_MANAGER_API_URL  | URL of the group management service                    |
 | MONGODB_URL            | URL of the MongoDB instance                            |
 | MONGODB_DB             | Name of the MongoDB DB, defaults to 'nenkyuu_calendar' |
-| NEO4J_USERNAME         | Username for the Neo4J instance                        |
-| NEO4J_PASSWORD         | Password for the Neo4J instance                        |
