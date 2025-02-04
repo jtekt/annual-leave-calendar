@@ -12,6 +12,7 @@ import {
   connected as dbConnected,
 } from "./db"
 import entries_router from "./routes/entries"
+import allocatons_router from "./routes/allocations"
 import {
   get_entries_of_group,
   get_entries_of_workplace,
@@ -73,6 +74,8 @@ app.route("/workplaces/:workplace_id/entries").get(get_entries_of_workplace)
 app.route("/users/:user_id/entries").get(get_entries_of_user).post(create_entry)
 
 app.use("/entries", entries_router)
+
+app.use("/allocatons", allocatons_router)
 
 app.listen(APP_PORT, () => {
   console.log(`[Express] listening on port ${APP_PORT}`)
