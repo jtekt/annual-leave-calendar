@@ -5,8 +5,13 @@ import { getUserId } from "../utils"
 import mongoose from "mongoose"
 import IEntry from "../interfaces/entry"
 import IUser from "../interfaces/user"
+import IAllocation from "../interfaces/allocation"
+import IGroup from "../interfaces/group"
+import {
+  get_user_allocations_by_year,
+  get_user_array_allocations_by_year,
+} from "./allocations"
 import { TOTAL_HEADER, DEFAULT_BATCH_SIZE } from "../constants"
-
 import { Request, Response } from "express"
 
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
@@ -36,7 +41,9 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 
   const entries = await Entry.find(query).sort("date")
 
-  res.send(entries)
+  const allocations = await get_user_allocations_by_year(year, user_id)
+
+  res.send({ entries, allocations })
 }
 
 export const create_entry = async (req: Request, res: Response) => {
@@ -266,13 +273,30 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     return prev
   }, {})
 
-  const output = users.map((user: IUser) => {
+  const result_allocations = await get_user_array_allocations_by_year(
+    year,
+    user_ids
+  )
+
+  const allocations_mapping = result_allocations.allocations.reduce(
+    (prev: any, allocation: IAllocation) => {
+      const { user_id } = allocation
+      if (!prev[user_id]) prev[user_id] = []
+      prev[user_id].push(allocation)
+      return prev
+    },
+    {}
+  )
+
+  const output = users.map((user: IGroup) => {
     const user_id = getUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
+    const allocatons = allocations_mapping[user_id] || []
+
     // FIXME: Two formats?
     user.entries = entries
-    return { user, entries }
+    return { user, entries, allocatons }
   })
 
   const response = {
