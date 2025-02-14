@@ -9,23 +9,24 @@ Similarily, the dedicated GUI for this application is developed independently an
 
 ## API
 
-| Endpoint                | Method | body/query            | Description                                          |
-| ----------------------- | ------ | --------------------- | ---------------------------------------------------- |
-| /                       | GET    | -                     | Application info                                     |
-| /entries/               | GET    | -                     | Gets all the entries                                 |
-| /entries/:id            | GET    | -                     | Gets the entry with the provided ID                  |
-| /entries/:id            | PUT    | entry properties      | Updates the entry with the provided ID               |
-| /entries/:id            | DELETE | -                     | Deletes the entry with the provided ID               |
-| /allocations/           | GET    | -                     | Gets all the allocations                             |
-| /allocations/:id        | GET    | -                     | Gets the allocation with the provided ID             |
-| /allocations/:id        | PUT    | allocation properties | Updates the allocation with the provided ID          |
-| /allocations/:id        | DELETE | -                     | Deletes the allocation with the provided ID          |
-| /users/:id/entries      | GET    | -                     | Gets the entries of the user with the given ID       |
-| /users/:id/entries      | POST   | {date: DATE}          | Creates an entry for the user with the given ID      |
-| /users/:id/allocations  | GET    | -                     | Gets the allocations of the user with the given ID   |
-| /users/:id/allocations  | POST   | {year: Number }       | Creates an allocation for the user with the given ID |
-| /groups/:id/entries     | GET    | -                     | Gets the entries of the group with the given ID      |
-| /groups/:id/allocations | GET    | -                     | Gets the allocations of the group with the given ID  |
+| Endpoint                | Method | body/query            | Description                                                    |
+| ----------------------- | ------ | --------------------- | -------------------------------------------------------------- |
+| /                       | GET    | -                     | Application info                                               |
+| /entries/               | GET    | -                     | Gets all the entries                                           |
+| /entries/:id            | GET    | -                     | Gets the entry with the provided ID                            |
+| /entries/:id            | PUT    | entry properties      | Updates the entry with the provided ID                         |
+| /entries/:id            | DELETE | -                     | Deletes the entry with the provided ID                         |
+| /allocations/           | GET    | -                     | Gets all the allocations                                       |
+| /allocations/:id        | GET    | -                     | Gets the allocation with the provided ID                       |
+| /allocations/:id        | PUT    | allocation properties | Updates the allocation with the provided ID                    |
+| /allocations/:id        | DELETE | -                     | Deletes the allocation with the provided ID                    |
+| /users/:id/entries      | GET    | -                     | Gets the entries of the user with the given ID                 |
+| /v2/users/:id/entries   | GET    | -                     | Gets the entries and allocations of the user with the given ID |
+| /users/:id/entries      | POST   | {date: DATE}          | Creates an entry for the user with the given ID                |
+| /users/:id/allocations  | GET    | -                     | Gets the allocations of the user with the given ID             |
+| /users/:id/allocations  | POST   | {year: Number }       | Creates an allocation for the user with the given ID           |
+| /groups/:id/entries     | GET    | -                     | Gets the entries of the group with the given ID                |
+| /groups/:id/allocations | GET    | -                     | Gets the allocations of the group with the given ID            |
 
 ## Environment variables
 

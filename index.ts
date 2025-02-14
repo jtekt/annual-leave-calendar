@@ -17,6 +17,7 @@ import {
   get_entries_of_group,
   get_entries_of_workplace,
   get_entries_of_user,
+  get_entries_of_user_v2,
   create_entry,
 } from "./controllers/entries"
 import {
@@ -79,6 +80,11 @@ app.route("/groups/:group_id/allocations").get(get_allocations_of_group)
 app.route("/workplaces/:workplace_id/entries").get(get_entries_of_workplace)
 
 app.route("/users/:user_id/entries").get(get_entries_of_user).post(create_entry)
+
+app
+  .route("/v2/users/:user_id/entries")
+  .get(get_entries_of_user_v2)
+  .post(create_entry)
 
 app
   .route("/users/:user_id/allocations")
