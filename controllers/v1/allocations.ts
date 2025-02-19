@@ -1,12 +1,12 @@
 import axios from "axios"
-import Allocation from "../models/allocation"
+import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getUserId } from "../utils"
-import { DEFAULT_BATCH_SIZE } from "../constants"
+import { getUserId } from "../../utils"
+import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
-import IUser from "../interfaces/user"
-import IGroup from "../interfaces/group"
-import IAllocation from "../interfaces/allocation"
+import IUser from "../../interfaces/user"
+import IGroup from "../../interfaces/group"
+import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
 function get_current_user_id(res: Response) {
@@ -151,10 +151,12 @@ export const get_user_array_allocations_by_year = async (
 export const create_allocation = async (req: Request, res: Response) => {
   const {
     year,
-    user_id,
     leaves = { current_year_grants: 0, carried_over: 0 },
     reserve = { current_year_grants: 0, carried_over: 0 },
   } = req.body
+
+  let user_id: string | undefined = req.params.user_id
+  if (user_id === "self") user_id = get_current_user_id(res)
 
   if (!user_id) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
@@ -233,5 +235,6 @@ export const delete_allocation = async (req: Request, res: Response) => {
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
   const result = await Allocation.deleteOne({ _id })
+
   res.send(result)
 }

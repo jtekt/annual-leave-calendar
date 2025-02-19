@@ -11,20 +11,17 @@ import {
   connect as dbConnect,
   connected as dbConnected,
 } from "./db"
-import entries_router from "./routes/entries"
-import allocatons_router from "./routes/allocations"
-import {
-  get_entries_of_group,
-  get_entries_of_workplace,
-  get_entries_of_user,
-  get_entries_of_user_v2,
-  create_entry,
-} from "./controllers/entries"
-import {
-  get_allocations_of_user,
-  get_allocations_of_group,
-  create_allocation,
-} from "./controllers/allocations"
+import rootRouter from "./routes/index"
+// import {
+//   get_entries_of_group,
+//   get_entries_of_workplace,
+// } from "./controllers/v1/entries"
+// import { get_entries_of_user_v2 } from "./controllers/v2/entries"
+// import {
+//   get_allocations_of_user,
+//   get_allocations_of_group,
+//   create_allocation,
+// } from "./controllers/v1/allocations"
 import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
@@ -73,27 +70,26 @@ if (IDENTIFICATION_URL) {
   app.use(auth(auth_options))
 }
 
-app.route("/groups/:group_id/entries").get(get_entries_of_group)
+// app.route("/groups/:group_id/entries").get(get_entries_of_group)
 
-app.route("/groups/:group_id/allocations").get(get_allocations_of_group)
+// app.route("/groups/:group_id/allocations").get(get_allocations_of_group)
 
-app.route("/workplaces/:workplace_id/entries").get(get_entries_of_workplace)
+// app.route("/workplaces/:workplace_id/entries").get(get_entries_of_workplace)
 
-app.route("/users/:user_id/entries").get(get_entries_of_user).post(create_entry)
+// app.route("/users/:user_id/entries").get(get_entries_of_user).post(create_entry)
 
-app
-  .route("/v2/users/:user_id/entries")
-  .get(get_entries_of_user_v2)
-  .post(create_entry)
+// app.route("/v2/users/:user_id/entries").get(get_entries_of_user_v2)
 
-app
-  .route("/users/:user_id/allocations")
-  .get(get_allocations_of_user)
-  .post(create_allocation)
+// app
+//   .route("/users/:user_id/allocations")
+//   .get(get_allocations_of_user)
+//   .post(create_allocation)
 
-app.use("/entries", entries_router)
+// app.use("/entries", entries_router_v1)
 
-app.use("/allocatons", allocatons_router)
+// app.use("/allocatons", allocatons_router)
+
+app.use("/", rootRouter)
 
 app.listen(APP_PORT, () => {
   console.log(`[Express] listening on port ${APP_PORT}`)
