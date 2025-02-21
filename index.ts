@@ -11,13 +11,7 @@ import {
   connect as dbConnect,
   connected as dbConnected,
 } from "./db"
-import entries_router from "./routes/entries"
-import {
-  get_entries_of_group,
-  get_entries_of_workplace,
-  get_entries_of_user,
-  create_entry,
-} from "./controllers/entries"
+import rootRouter from "./routes/index"
 import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
@@ -66,13 +60,7 @@ if (IDENTIFICATION_URL) {
   app.use(auth(auth_options))
 }
 
-app.route("/groups/:group_id/entries").get(get_entries_of_group)
-
-app.route("/workplaces/:workplace_id/entries").get(get_entries_of_workplace)
-
-app.route("/users/:user_id/entries").get(get_entries_of_user).post(create_entry)
-
-app.use("/entries", entries_router)
+app.use("/", rootRouter)
 
 app.listen(APP_PORT, () => {
   console.log(`[Express] listening on port ${APP_PORT}`)
