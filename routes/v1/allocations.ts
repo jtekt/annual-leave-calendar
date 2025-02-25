@@ -9,7 +9,7 @@ import {
 
 const router = Router()
 
-router.route("/").post(create_allocation).get(get_all_allocations)
+router.route("/").get(get_all_allocations)
 
 router
   .route("/:_id")
