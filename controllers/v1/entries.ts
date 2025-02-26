@@ -288,11 +288,11 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     const user_id = getUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
-    const allocatons = allocations_mapping[user_id] || null
+    const allocations = allocations_mapping[user_id] || null
 
     // FIXME: Two formats?
     user.entries = entries
-    return { user, entries, allocatons }
+    return { user, entries, allocations }
   })
 
   const response = {
