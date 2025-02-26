@@ -367,13 +367,29 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     return prev
   }, {})
 
+  const result_allocations = await get_user_array_allocations_by_year(
+    year,
+    user_ids
+  )
+
+  const allocations_mapping = result_allocations.allocations.reduce(
+    (prev: any, allocation: IAllocation) => {
+      const { user_id } = allocation
+      if (!prev[user_id]) prev[user_id] = {}
+      prev[user_id] = allocation
+      return prev
+    },
+    {}
+  )
+
   const output = users.map((user: IUser) => {
     const user_id = getUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
+    const allocations = allocations_mapping[user_id] || null
     // FIXME: Two formats?
     user.entries = entries
-    return { user, entries }
+    return { user, entries, allocations }
   })
 
   const response = {
