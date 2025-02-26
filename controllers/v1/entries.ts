@@ -277,8 +277,8 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
   const allocations_mapping = result_allocations.allocations.reduce(
     (prev: any, allocation: IAllocation) => {
       const { user_id } = allocation
-      if (!prev[user_id]) prev[user_id] = []
-      prev[user_id].push(allocation)
+      if (!prev[user_id]) prev[user_id] = {}
+      prev[user_id] = allocation
       return prev
     },
     {}
@@ -288,7 +288,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     const user_id = getUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
-    const allocatons = allocations_mapping[user_id] || []
+    const allocatons = allocations_mapping[user_id] || null
 
     // FIXME: Two formats?
     user.entries = entries
