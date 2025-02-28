@@ -7,6 +7,7 @@ const schema = new Schema<IEntry>({
   comment: String,
 
   type: { type: String, required: true, default: "有休" }, // All day, morning or afternoon
+  reserve: { type: Boolean, default: false }, // This is the flag for determining the use of reserved annual leave.
 
   refresh: { type: Boolean, default: false },
 
