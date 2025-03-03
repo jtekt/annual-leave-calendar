@@ -160,15 +160,7 @@ export const update_entries = async (req: Request, res: Response) => {
     throw createHttpError(400, `type not provided`)
 
   const bulkOps = entries.map((entry: IEntry) => {
-    const { type, reserve } = entry
-
-    let updateFields: any = {
-      type: String(type),
-    }
-
-    if (reserve !== undefined) {
-      updateFields.reserve = reserve
-    }
+    const { type } = entry
 
     let opts = {
       updateOne: {
@@ -176,7 +168,9 @@ export const update_entries = async (req: Request, res: Response) => {
           _id: mongoose.Types.ObjectId(entry._id),
         },
         update: {
-          $set: updateFields,
+          $set: {
+            type: String(type),
+          },
         },
       },
     }
