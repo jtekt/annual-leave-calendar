@@ -4,6 +4,7 @@ interface IEntry {
   user_id: string
   comment: string
   type: string
+  reserve: boolean
   refresh: boolean
   taken?: boolean
   plus_one?: boolean

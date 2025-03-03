@@ -51,6 +51,7 @@ export const create_entry = async (req: Request, res: Response) => {
     taken = false,
     refresh = false,
     plus_one = false,
+    reserve = false,
   } = req.body
 
   let user_id: string | undefined = req.params.user_id
@@ -68,6 +69,7 @@ export const create_entry = async (req: Request, res: Response) => {
     taken,
     refresh,
     plus_one,
+    reserve,
   }
 
   const filter = { date, user_id }
