@@ -293,7 +293,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     const allocations = allocations_mapping[user_id] || null
 
     // FIXME: Two formats?
-    user.entries = entries
+    // user.entries = entries
     return { user, entries, allocations }
   })
 
