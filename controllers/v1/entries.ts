@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { getUserId } from "../../utils"
+import { getUserId, getUsername, resolveUserQueryField } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
@@ -16,7 +16,7 @@ const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
 function get_current_user_id(res: Response) {
   const { user } = res.locals
-  return getUserId(user)
+  return getUserId(user) || getUsername(user)
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
@@ -35,7 +35,12 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const query = { user_id, date: { $gte: start_of_date, $lte: end_of_date } }
+  const { field, value } = resolveUserQueryField(user_id);
+
+  const query = {
+    [field]: value,
+    date: { $gte: start_of_date, $lte: end_of_date },
+  };
 
   const entries = await Entry.find(query).sort("date")
 
@@ -60,8 +65,10 @@ export const create_entry = async (req: Request, res: Response) => {
   if (!user_id) throw createHttpError(400, `User ID not provided`)
   if (!date) throw createHttpError(400, `Date not provided`)
 
+  const { field, value } = resolveUserQueryField(user_id);
+
   const entry_properties = {
-    user_id,
+    [field]: value,
     date,
     type,
     am,
@@ -72,7 +79,7 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve,
   }
 
-  const filter = { date, user_id }
+  const filter = { date, [field]: value }
   const options = { new: true, upsert: true }
 
   const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)

@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getUserId } from "../../utils"
+import { getUserId, resolveUserQueryField } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -98,14 +98,19 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
 export const get_user_allocations_by_year = async (
   year: Number,
-  user_id: String
+  user_id: string
 ) => {
   if (!user_id) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
   const limit = DEFAULT_BATCH_SIZE
   const skip = 0
-  const query: any = { year, user_id }
+  const { field, value } = resolveUserQueryField(user_id);
+
+  const query: any = {
+    year,
+    [field]: value,
+  };
 
   const allocations = await Allocation.findOne(query)
     .skip(Number(skip))
