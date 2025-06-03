@@ -20,6 +20,7 @@ import { TOTAL_HEADER } from "./constants"
 const {
   APP_PORT = 80,
   IDENTIFICATION_URL,
+  OIDC_JWKS_URI,
   GROUP_MANAGER_API_URL = "UNDEFINED",
 } = process.env
 
@@ -45,6 +46,7 @@ app.get("/", (req: Request, res: Response) => {
     version,
     auth: {
       identification_url: IDENTIFICATION_URL || "Unset",
+      oidc_jwk_url: OIDC_JWKS_URI || "Unset",
     },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     mongodb: {
@@ -53,12 +55,6 @@ app.get("/", (req: Request, res: Response) => {
     },
   })
 })
-
-// Authenticate everything from here on
-if (IDENTIFICATION_URL) {
-  const auth_options = { url: IDENTIFICATION_URL }
-  app.use(auth(auth_options))
-}
 
 app.use("/", rootRouter)
 
