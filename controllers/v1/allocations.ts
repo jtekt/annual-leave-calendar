@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getUserId, getUsername, resolveUserQueryField } from "../../utils"
+import { collectByKeys, getUserId, getUsername, resolveUserQueryField } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -45,7 +45,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
   let users: any[]
   let total_of_users: number
-
+  try {
   const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
   const headers = { authorization: req.headers.authorization }
   const params = {
@@ -57,40 +57,51 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   const { items, count } = data
   users = items
   total_of_users = count
+  } catch (error: any) {
+    const { response = {} } = error
+    const { status = 500, data = "Failed to query group members" } = response
+    throw createHttpError(status, data)
+  }
 
-  const user_ids = users.map((user: IUser) => ({
-    user_id: getUserId(user),
-  }))
+  const identifiers = users.flatMap(user => {
+    const user_id = getUserId(user);
+    const preferred_username = getUsername(user);
 
-  if (!user_ids.length)
+    const clauses: { user_id?: string; preferred_username?: string }[] = [];
+
+    if (user_id) clauses.push({ user_id });
+    if (preferred_username) clauses.push({ preferred_username });
+
+    return clauses;
+  });
+
+  if (!identifiers.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
 
   const result_allocations = await get_user_array_allocations_by_year(
     year,
-    user_ids
+    identifiers
   )
 
-  const allocations_mapping = result_allocations.allocations.reduce(
-    (prev: any, allocation: IAllocation) => {
-      const { user_id } = allocation
-      if (!prev[user_id]) prev[user_id] = []
-      prev[user_id].push(allocation)
-      return prev
-    },
-    {}
-  )
+  const allocations_mapping = collectByKeys<IAllocation>(
+    result_allocations.allocations,
+    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
+    (acc, allocation, key) => {
+      acc[key] = allocation;
+    }
+  );
 
   const output = users.map((user: IGroup) => {
-    const user_id = getUserId(user)
-    if (!user_id) throw "User has no ID"
-    const allocatons = allocations_mapping[user_id] || []
+    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
+    if (!keys.length) throw new Error("User has no user_id or preferred_username");
 
-    return { user, allocatons }
+    const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
+
+    return { user, allocations }
   })
 
   const response = {
     year,
-    user_ids,
     limit,
     skip,
     total: total_of_users,

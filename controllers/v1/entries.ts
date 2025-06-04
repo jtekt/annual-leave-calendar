@@ -257,7 +257,6 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-
   const identifiers = users.flatMap(user => {
     const user_id = getUserId(user);
     const preferred_username = getUsername(user);
