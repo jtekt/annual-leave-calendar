@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getUserId, resolveUserQueryField } from "../../utils"
+import { getUserId, getUsername, resolveUserQueryField } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -11,7 +11,7 @@ const { GROUP_MANAGER_API_URL } = process.env
 
 function get_current_user_id(res: Response) {
   const { user } = res.locals
-  return getUserId(user)
+  return getUserId(user) || getUsername(user)
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
@@ -21,9 +21,13 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
 
   const { year } = req.query as any
 
-  const query: any = {}
-  query.user_id = user_id
-  if (year) query.year = year
+  const { field, value } = resolveUserQueryField(user_id);
+
+  const query: any = {
+    [field]: value,
+  };
+
+  if (year) query.year = year;
 
   const allocations = await Allocation.find(query).sort("year")
 
@@ -123,17 +127,18 @@ export const get_user_allocations_by_year = async (
 
 export const get_user_array_allocations_by_year = async (
   year: Number,
-  user_ids: {
-    user_id: string | undefined
-  }[]
+  identifiers: { user_id?: string; preferred_username?: string }[]
 ) => {
-  if (!user_ids)
-    throw createHttpError(400, `No User IDs found in the provided array`)
+  if (!identifiers || !identifiers.length)
+    throw createHttpError(400, `No user identifiers provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
   const limit = DEFAULT_BATCH_SIZE
   const skip = 0
-  const query: any = { year, $or: user_ids }
+  const query: any = {
+    year,
+    $or: identifiers,
+  }
 
   const allocations = await Allocation.find(query)
     .skip(Number(skip))
@@ -143,7 +148,7 @@ export const get_user_array_allocations_by_year = async (
 
   const response = {
     year,
-    user_ids,
+    identifiers,
     limit,
     skip,
     total,
@@ -166,14 +171,16 @@ export const create_allocation = async (req: Request, res: Response) => {
   if (!user_id) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
+  const { field, value } = resolveUserQueryField(user_id);
+
   const allocation_properties = {
     year,
-    user_id,
+    [field]: value,
     leaves,
     reserve,
   }
 
-  const filter = { year, user_id }
+  const filter = { year, [field]: value }
   const options = { new: true, upsert: true }
 
   const allocation = await Allocation.findOneAndUpdate(

@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { getUserId, getUsername, resolveUserQueryField } from "../../utils"
+import { collectByKeys, getUserId, getUsername, resolveUserQueryField } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
@@ -257,47 +257,64 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const user_ids = users.map((user: IUser) => ({
-    user_id: getUserId(user),
-  }))
 
-  if (!user_ids.length)
+  const identifiers = users.flatMap(user => {
+    const user_id = getUserId(user);
+    const preferred_username = getUsername(user);
+
+    const clauses: { user_id?: string; preferred_username?: string }[] = [];
+
+    if (user_id) clauses.push({ user_id });
+    if (preferred_username) clauses.push({ preferred_username });
+
+    return clauses;
+  });
+
+  if (!identifiers.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
 
   const query = {
-    $or: user_ids,
+    $or: identifiers,
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
   const entries = await Entry.find(query).sort("date")
 
-  const entries_mapping = entries.reduce((prev: any, entry: IEntry) => {
-    const { user_id } = entry
-    if (!prev[user_id]) prev[user_id] = []
-    prev[user_id].push(entry)
-    return prev
-  }, {})
+  const entries_mapping = collectByKeys<IEntry>(
+    entries,
+    (entry) => [entry.user_id, (entry as any).preferred_username],
+    (acc, entry, key) => {
+      acc[key] = acc[key] || [];
+      acc[key].push(entry);
+    }
+  );
 
   const result_allocations = await get_user_array_allocations_by_year(
     year,
-    user_ids
+    identifiers
   )
 
-  const allocations_mapping = result_allocations.allocations.reduce(
-    (prev: any, allocation: IAllocation) => {
-      const { user_id } = allocation
-      if (!prev[user_id]) prev[user_id] = {}
-      prev[user_id] = allocation
-      return prev
-    },
-    {}
-  )
+  const allocations_mapping = collectByKeys<IAllocation>(
+    result_allocations.allocations,
+    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
+    (acc, allocation, key) => {
+      acc[key] = allocation;
+    }
+  );
 
-  const output = users.map((user: IGroup) => {
-    const user_id = getUserId(user)
-    if (!user_id) throw "User has no ID"
-    const entries = entries_mapping[user_id] || []
-    const allocations = allocations_mapping[user_id] || null
+  const output = users.map((user: any) => {
+    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
+    if (!keys.length) throw new Error("User has no user_id or preferred_username");
+
+    // Merge entries from all known keys
+    const entries: IEntry[] = Array.from(
+      new Map(
+        keys
+          .flatMap(key => entries_mapping[key] || [])
+          .map(entry => [entry._id.toString(), entry])
+      ).values()
+    );
+    const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
 
     // FIXME: Two formats?
     // user.entries = entries

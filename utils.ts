@@ -9,3 +9,16 @@ export const resolveUserQueryField = (id: string) => {
         ? { field: "preferred_username", value: id }
         : { field: "user_id", value: id };
 };
+
+export const collectByKeys = <T>(
+    list: T[],
+    getKeys: (item: T) => (string | undefined)[],
+    accumulate: (acc: Record<string, any>, item: T, key: string) => void,
+    initial: Record<string, any> = {}
+) =>
+    list.reduce((acc, item) => {
+        for (const key of getKeys(item).filter(Boolean) as string[]) {
+            accumulate(acc, item, key);
+        }
+        return acc;
+    }, initial);
