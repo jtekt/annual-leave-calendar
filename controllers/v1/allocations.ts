@@ -46,17 +46,17 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   let users: any[]
   let total_of_users: number
   try {
-  const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-  const headers = { authorization: req.headers.authorization }
-  const params = {
-    batch_size: limit,
-    start_index: skip,
-  }
+    const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
+    const headers = { authorization: req.headers.authorization }
+    const params = {
+      batch_size: limit,
+      start_index: skip,
+    }
 
-  const { data } = await axios.get(url, { headers, params })
-  const { items, count } = data
-  users = items
-  total_of_users = count
+    const { data } = await axios.get(url, { headers, params })
+    const { items, count } = data
+    users = items
+    total_of_users = count
   } catch (error: any) {
     const { response = {} } = error
     const { status = 500, data = "Failed to query group members" } = response
