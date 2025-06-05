@@ -312,7 +312,6 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     const keys = [getUserId(user), getUsername(user)].filter(Boolean);
     if (!keys.length) throw new Error("User has no user_id or preferred_username");
 
-    // Merge entries from all known keys
     const entries: IEntry[] = Array.from(
       new Map(
         keys
@@ -426,7 +425,6 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     const keys = [getUserId(user), getUsername(user)].filter(Boolean);
     if (!keys.length) throw new Error("User has no user_id or preferred_username");
 
-    // Merge entries from all known keys
     const entries: IEntry[] = Array.from(
       new Map(
         keys
