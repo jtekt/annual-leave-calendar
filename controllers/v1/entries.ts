@@ -90,8 +90,9 @@ export const create_entry = async (req: Request, res: Response) => {
 export const create_entries = async (req: Request, res: Response) => {
   const entries = req.body
 
-  if (entries.some(({ user_id }: IEntry) => !user_id))
-    throw createHttpError(400, `User ID not provided`)
+  if (entries.some((entry: any) => !entry.user_id && !entry.preferred_username))
+    throw createHttpError(400, `User ID or preferred_username not provided`);
+
   if (entries.some(({ date }: IEntry) => !date))
     throw createHttpError(400, `User ID not provided`)
 
@@ -128,7 +129,13 @@ export const get_all_entries = async (req: Request, res: Response) => {
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
-  if (user_ids) query.$or = user_ids.map((user_id: string) => ({ user_id }))
+  if (user_ids) {
+    const userIdArray = Array.isArray(user_ids) ? user_ids : [user_ids];
+    query.$or = userIdArray.map((id: string) => {
+      const { field, value } = resolveUserQueryField(id);
+      return { [field]: value };
+    });
+  }
 
   const entries = await Entry.find(query)
     .skip(Number(skip))
