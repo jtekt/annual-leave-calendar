@@ -4,24 +4,23 @@ import createHttpError from "http-errors"
 import { collectByKeys, getUserId, getUsername, resolveUserQueryField } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
-import IUser from "../../interfaces/user"
 import IGroup from "../../interfaces/group"
 import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
-function get_current_user_id(res: Response) {
+function getIdentifier(res: Response) {
   const { user } = res.locals
   return getUserId(user) || getUsername(user)
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  let identifier: string | undefined = req.params.user_id
+  if (identifier === "self") identifier = getIdentifier(res)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
 
   const { year } = req.query as any
 
-  const { field, value } = resolveUserQueryField(user_id);
+  const { field, value } = resolveUserQueryField(identifier);
 
   const query: any = {
     [field]: value,
@@ -113,14 +112,14 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
 export const get_user_allocations_by_year = async (
   year: Number,
-  user_id: string
+  identifier: string
 ) => {
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
   const limit = DEFAULT_BATCH_SIZE
   const skip = 0
-  const { field, value } = resolveUserQueryField(user_id);
+  const { field, value } = resolveUserQueryField(identifier);
 
   const query: any = {
     year,
@@ -176,13 +175,13 @@ export const create_allocation = async (req: Request, res: Response) => {
     reserve = { current_year_grants: 0, carried_over: 0 },
   } = req.body
 
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
+  let identifier: string | undefined = req.params.user_id
+  if (identifier === "self") identifier = getIdentifier(res)
 
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
-  const { field, value } = resolveUserQueryField(user_id);
+  const { field, value } = resolveUserQueryField(identifier);
 
   const allocation_properties = {
     year,

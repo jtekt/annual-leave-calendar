@@ -4,25 +4,23 @@ import createHttpError from "http-errors"
 import { collectByKeys, getUserId, getUsername, resolveUserQueryField } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
-import IUser from "../../interfaces/user"
 import IAllocation from "../../interfaces/allocation"
-import IGroup from "../../interfaces/group"
 import { get_user_array_allocations_by_year } from "./allocations"
 
-import { TOTAL_HEADER, DEFAULT_BATCH_SIZE } from "../../constants"
+import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
-function get_current_user_id(res: Response) {
+function get_identifier(res: Response) {
   const { user } = res.locals
   return getUserId(user) || getUsername(user)
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  let identifier: string | undefined = req.params.user_id
+  if (identifier === "self") identifier = get_identifier(res)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
 
   const {
     year = new Date().getFullYear(),
@@ -35,7 +33,7 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const { field, value } = resolveUserQueryField(user_id);
+  const { field, value } = resolveUserQueryField(identifier);
 
   const query = {
     [field]: value,
@@ -59,13 +57,13 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve = false,
   } = req.body
 
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
+  let identifier: string | undefined = req.params.user_id
+  if (identifier === "self") identifier = get_identifier(res)
 
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!date) throw createHttpError(400, `Date not provided`)
 
-  const { field, value } = resolveUserQueryField(user_id);
+  const { field, value } = resolveUserQueryField(identifier);
 
   const entry_properties = {
     [field]: value,
