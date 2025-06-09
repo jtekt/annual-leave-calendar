@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getUsername, resolveUserQueryField } from "../../utils"
+import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQueryField } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IGroup from "../../interfaces/group"
@@ -181,16 +181,16 @@ export const create_allocation = async (req: Request, res: Response) => {
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
-  const { field, value } = resolveUserQueryField(identifier);
+  const userIdentifierFields = resolveUserEntryFields(res.locals.user);
 
   const allocation_properties = {
     year,
-    [field]: value,
+    ...userIdentifierFields,
     leaves,
     reserve,
   }
 
-  const filter = { year, [field]: value }
+  const filter = { year, ...userIdentifierFields }
   const options = { new: true, upsert: true }
 
   const allocation = await Allocation.findOneAndUpdate(

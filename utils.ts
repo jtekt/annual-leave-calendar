@@ -10,6 +10,12 @@ export const resolveUserQueryField = (id: string) => {
         : { field: "user_id", value: id };
 };
 
+export const resolveUserEntryFields = (user: any) => {
+    return user._id && user.username && !user.preferred_username
+        ? { user_id: user._id, preferred_username: user.username } // legacy
+        : { preferred_username: user.preferred_username }; // OIDC
+};
+
 export const collectByKeys = <T>(
     list: T[],
     getKeys: (item: T) => (string | undefined)[],

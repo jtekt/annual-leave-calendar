@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getUsername, resolveUserQueryField } from "../../utils"
+import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQueryField } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IAllocation from "../../interfaces/allocation"
@@ -63,10 +63,10 @@ export const create_entry = async (req: Request, res: Response) => {
   if (!identifier) throw createHttpError(400, `User ID or username not provided`)
   if (!date) throw createHttpError(400, `Date not provided`)
 
-  const { field, value } = resolveUserQueryField(identifier);
+  const userIdentifierFields = resolveUserEntryFields(res.locals.user);
 
   const entry_properties = {
-    [field]: value,
+    ...userIdentifierFields,
     date,
     type,
     am,
@@ -77,7 +77,7 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve,
   }
 
-  const filter = { date, [field]: value }
+  const filter = { date, ...userIdentifierFields }
   const options = { new: true, upsert: true }
 
   const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
