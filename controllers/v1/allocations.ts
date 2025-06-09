@@ -14,7 +14,7 @@ function getIdentifier(res: Response) {
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
+  let identifier: string | undefined = req.params.indentifier
   if (identifier === "self") identifier = getIdentifier(res)
   if (!identifier) throw createHttpError(400, `User ID not provided`)
 
@@ -175,7 +175,7 @@ export const create_allocation = async (req: Request, res: Response) => {
     reserve = { current_year_grants: 0, carried_over: 0 },
   } = req.body
 
-  let identifier: string | undefined = req.params.user_id
+  let identifier: string | undefined = req.params.indentifier
   if (identifier === "self") identifier = getIdentifier(res)
 
   if (!identifier) throw createHttpError(400, `User ID not provided`)
@@ -213,17 +213,25 @@ export const get_single_allocation = async (req: Request, res: Response) => {
 export const get_all_allocations = async (req: Request, res: Response) => {
   const {
     year,
-    user_id,
+    indentifiers,
     limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
 
-  const query: any = {}
+  let query: any = {}
+
   if (year) query.year = year
-  if (user_id) query.user_id = user_id
+
+  if (indentifiers) {
+    const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
+    query.$or = userIdArray.map((id: string) => {
+      const { field, value } = resolveUserQueryField(id);
+      return { [field]: value };
+    });
+  }
 
   const allocations = await Allocation.find(query)
-    .sort({ user_id, year })
+    .sort("year")
     .skip(Number(skip))
     .limit(Math.max(Number(limit), 0))
 
@@ -231,7 +239,6 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 
   const response = {
     year,
-    user_id,
     limit,
     skip,
     total,

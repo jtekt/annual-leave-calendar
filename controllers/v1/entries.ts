@@ -18,7 +18,7 @@ function get_identifier(res: Response) {
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
+  let identifier: string | undefined = req.params.indentifier
   if (identifier === "self") identifier = get_identifier(res)
   if (!identifier) throw createHttpError(400, `User ID not provided`)
 
@@ -57,10 +57,10 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve = false,
   } = req.body
 
-  let identifier: string | undefined = req.params.user_id
+  let identifier: string | undefined = req.params.indentifier
   if (identifier === "self") identifier = get_identifier(res)
 
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
+  if (!identifier) throw createHttpError(400, `User ID or username not provided`)
   if (!date) throw createHttpError(400, `Date not provided`)
 
   const { field, value } = resolveUserQueryField(identifier);
@@ -113,7 +113,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
     year = new Date().getFullYear(),
     start_date,
     end_date,
-    user_ids,
+    indentifiers,
     limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
@@ -127,8 +127,8 @@ export const get_all_entries = async (req: Request, res: Response) => {
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
-  if (user_ids) {
-    const userIdArray = Array.isArray(user_ids) ? user_ids : [user_ids];
+  if (indentifiers) {
+    const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
     query.$or = userIdArray.map((id: string) => {
       const { field, value } = resolveUserQueryField(id);
       return { [field]: value };
