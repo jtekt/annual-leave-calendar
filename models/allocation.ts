@@ -17,13 +17,13 @@ const schema = new Schema<IAllocation>({
 
 // Unique when user_id exists
 schema.index(
-  { date: 1, user_id: 1 },
+  { year: 1, user_id: 1 },
   { unique: true, partialFilterExpression: { user_id: { $exists: true } } }
 );
 
 // Unique when preferred_username exists
 schema.index(
-  { date: 1, preferred_username: 1 },
+  { year: 1, preferred_username: 1 },
   { unique: true, partialFilterExpression: { preferred_username: { $exists: true } } }
 );
 schema.index({ user_id: 1 })
