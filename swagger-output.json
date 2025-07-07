@@ -56,12 +56,12 @@
         }
       }
     },
-    "/users/{user_id}/entries": {
+    "/users/{indentifier}/entries": {
       "get": {
         "description": "",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "indentifier",
             "in": "path",
             "required": true,
             "type": "string"
@@ -92,7 +92,7 @@
         "description": "",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "indentifier",
             "in": "path",
             "required": true,
             "type": "string"
@@ -155,7 +155,7 @@
             "type": "string"
           },
           {
-            "name": "user_ids",
+            "name": "indentifiers",
             "in": "query",
             "type": "string"
           },

@@ -1,29 +1,32 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getUserId } from "../../utils"
+import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQueryField } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
-import IUser from "../../interfaces/user"
 import IGroup from "../../interfaces/group"
 import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
-function get_current_user_id(res: Response) {
+function getIdentifier(res: Response) {
   const { user } = res.locals
-  return getUserId(user)
+  return getUserId(user) || getUsername(user)
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  let identifier: string | undefined = req.params.indentifier
+  if (identifier === "self") identifier = getIdentifier(res)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
 
   const { year } = req.query as any
 
-  const query: any = {}
-  query.user_id = user_id
-  if (year) query.year = year
+  const { field, value } = resolveUserQueryField(identifier);
+
+  const query: any = {
+    [field]: value,
+  };
+
+  if (year) query.year = year;
 
   const allocations = await Allocation.find(query).sort("year")
 
@@ -41,52 +44,63 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
   let users: any[]
   let total_of_users: number
+  try {
+    const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
+    const headers = { authorization: req.headers.authorization }
+    const params = {
+      batch_size: limit,
+      start_index: skip,
+    }
 
-  const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-  const headers = { authorization: req.headers.authorization }
-  const params = {
-    batch_size: limit,
-    start_index: skip,
+    const { data } = await axios.get(url, { headers, params })
+    const { items, count } = data
+    users = items
+    total_of_users = count
+  } catch (error: any) {
+    const { response = {} } = error
+    const { status = 500, data = "Failed to query group members" } = response
+    throw createHttpError(status, data)
   }
 
-  const { data } = await axios.get(url, { headers, params })
-  const { items, count } = data
-  users = items
-  total_of_users = count
+  const identifiers = users.flatMap(user => {
+    const user_id = getUserId(user);
+    const preferred_username = getUsername(user);
 
-  const user_ids = users.map((user: IUser) => ({
-    user_id: getUserId(user),
-  }))
+    const clauses: { user_id?: string; preferred_username?: string }[] = [];
 
-  if (!user_ids.length)
+    if (user_id) clauses.push({ user_id });
+    if (preferred_username) clauses.push({ preferred_username });
+
+    return clauses;
+  });
+
+  if (!identifiers.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
 
   const result_allocations = await get_user_array_allocations_by_year(
     year,
-    user_ids
+    identifiers
   )
 
-  const allocations_mapping = result_allocations.allocations.reduce(
-    (prev: any, allocation: IAllocation) => {
-      const { user_id } = allocation
-      if (!prev[user_id]) prev[user_id] = []
-      prev[user_id].push(allocation)
-      return prev
-    },
-    {}
-  )
+  const allocations_mapping = collectByKeys<IAllocation>(
+    result_allocations.allocations,
+    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
+    (acc, allocation, key) => {
+      acc[key] = allocation;
+    }
+  );
 
   const output = users.map((user: IGroup) => {
-    const user_id = getUserId(user)
-    if (!user_id) throw "User has no ID"
-    const allocatons = allocations_mapping[user_id] || []
+    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
+    if (!keys.length) throw new Error("User has no user_id or preferred_username");
 
-    return { user, allocatons }
+    const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
+
+    return { user, allocations }
   })
 
   const response = {
     year,
-    user_ids,
     limit,
     skip,
     total: total_of_users,
@@ -98,14 +112,19 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
 export const get_user_allocations_by_year = async (
   year: Number,
-  user_id: String
+  identifier: string
 ) => {
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
   const limit = DEFAULT_BATCH_SIZE
   const skip = 0
-  const query: any = { year, user_id }
+  const { field, value } = resolveUserQueryField(identifier);
+
+  const query: any = {
+    year,
+    [field]: value,
+  };
 
   const allocations = await Allocation.findOne(query)
     .skip(Number(skip))
@@ -118,17 +137,18 @@ export const get_user_allocations_by_year = async (
 
 export const get_user_array_allocations_by_year = async (
   year: Number,
-  user_ids: {
-    user_id: string | undefined
-  }[]
+  identifiers: { user_id?: string; preferred_username?: string }[]
 ) => {
-  if (!user_ids)
-    throw createHttpError(400, `No User IDs found in the provided array`)
+  if (!identifiers || !identifiers.length)
+    throw createHttpError(400, `No user identifiers provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
   const limit = DEFAULT_BATCH_SIZE
   const skip = 0
-  const query: any = { year, $or: user_ids }
+  const query: any = {
+    year,
+    $or: identifiers,
+  }
 
   const allocations = await Allocation.find(query)
     .skip(Number(skip))
@@ -138,7 +158,7 @@ export const get_user_array_allocations_by_year = async (
 
   const response = {
     year,
-    user_ids,
+    identifiers,
     limit,
     skip,
     total,
@@ -155,20 +175,22 @@ export const create_allocation = async (req: Request, res: Response) => {
     reserve = { current_year_grants: 0, carried_over: 0 },
   } = req.body
 
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
+  let identifier: string | undefined = req.params.indentifier
+  if (identifier === "self") identifier = getIdentifier(res)
 
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
+
+  const userIdentifierFields = resolveUserEntryFields(res.locals.user);
 
   const allocation_properties = {
     year,
-    user_id,
+    ...userIdentifierFields,
     leaves,
     reserve,
   }
 
-  const filter = { year, user_id }
+  const filter = { year, ...userIdentifierFields }
   const options = { new: true, upsert: true }
 
   const allocation = await Allocation.findOneAndUpdate(
@@ -191,17 +213,25 @@ export const get_single_allocation = async (req: Request, res: Response) => {
 export const get_all_allocations = async (req: Request, res: Response) => {
   const {
     year,
-    user_id,
+    indentifiers,
     limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
 
-  const query: any = {}
+  let query: any = {}
+
   if (year) query.year = year
-  if (user_id) query.user_id = user_id
+
+  if (indentifiers) {
+    const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
+    query.$or = userIdArray.map((id: string) => {
+      const { field, value } = resolveUserQueryField(id);
+      return { [field]: value };
+    });
+  }
 
   const allocations = await Allocation.find(query)
-    .sort({ user_id, year })
+    .sort("year")
     .skip(Number(skip))
     .limit(Math.max(Number(limit), 0))
 
@@ -209,7 +239,6 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 
   const response = {
     year,
-    user_id,
     limit,
     skip,
     total,
