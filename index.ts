@@ -5,7 +5,6 @@ import "express-async-errors"
 import cors from "cors"
 import promBundle from "express-prom-bundle"
 import { author, version } from "./package.json"
-import auth from "@moreillon/express_identification_middleware"
 import {
   redactedConnectionString,
   connect as dbConnect,

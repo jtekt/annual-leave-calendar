@@ -12,9 +12,13 @@ import { Request, Response } from "express"
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.indentifier
-  if (!identifier || (identifier === "self" && !res.locals.user)) {
+  let identifier: string | undefined = req.params.identifier
+  if (!identifier) {
+    console.log("here > !identifier")
     throw createHttpError(400, `User not authenticated or ID not provided`);
+  } else if (identifier === "self" && !res.locals.user) {
+    console.log("here > !res.locals.user")
+    throw createHttpError(401, `User not authenticated or ID not provided`);
   }
 
   const {
@@ -64,11 +68,15 @@ export const create_entry = async (req: Request, res: Response) => {
   }
 
   let userFields: any;
-  if (identifier === "self") {
-    if (!res.locals.user) {
-      throw createHttpError(401, "User not authenticated");
-    }
-    userFields = resolveUserEntryFields(res.locals.user);
+  if (identifier) {
+    if (identifier === "self") {
+      if (!res.locals.user) {
+        throw createHttpError(401, "User identifier not provided");
+      }
+      userFields = resolveUserEntryFields(res.locals.user);
+    } else
+      userFields = { preferred_username: identifier };
+
   } else if (user_id || preferred_username) {
     userFields = {};
     if (user_id) userFields.user_id = user_id;
@@ -102,7 +110,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
     year = new Date().getFullYear(),
     start_date,
     end_date,
-    indentifiers,
+    identifiers,
     limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
@@ -116,8 +124,8 @@ export const get_all_entries = async (req: Request, res: Response) => {
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
-  if (indentifiers) {
-    const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
+  if (identifiers) {
+    const userIdArray = Array.isArray(identifiers) ? identifiers : [identifiers];
     query.$or = userIdArray.flatMap((id: string) => [
       { user_id: id },
       { preferred_username: id },

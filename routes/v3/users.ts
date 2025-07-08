@@ -7,9 +7,9 @@ import {
 
 const router = Router()
 
-router.route("/:indentifier/entries").get(get_entries_of_user).post(create_entry)
+router.route("/:identifier/entries").get(get_entries_of_user).post(create_entry)
 router
-  .route("/:indentifier/allocations")
+  .route("/:identifier/allocations")
   .get(get_allocations_of_user)
   .post(create_allocation)
 

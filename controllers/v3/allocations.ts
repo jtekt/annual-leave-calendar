@@ -9,9 +9,11 @@ import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.indentifier
-  if (!identifier || (identifier === "self" && !res.locals.user)) {
+  let identifier: string | undefined = req.params.identifier
+  if (!identifier) {
     throw createHttpError(400, `User not authenticated or ID not provided`);
+  } else if (identifier === "self" && !res.locals.user) {
+    throw createHttpError(401, `User not authenticated or ID not provided`);
   }
 
   const { year } = req.query as any
@@ -164,7 +166,7 @@ export const create_allocation = async (req: Request, res: Response) => {
     preferred_username
   } = req.body
 
-  let identifier: string | undefined = req.params.indentifier
+  let identifier: string | undefined = req.params.identifier
   if (!year) throw createHttpError(400, `Year not provided`)
 
   let userFields: any;
@@ -207,7 +209,7 @@ export const create_allocation = async (req: Request, res: Response) => {
 export const get_all_allocations = async (req: Request, res: Response) => {
   const {
     year,
-    indentifiers,
+    identifiers,
     limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
@@ -216,8 +218,8 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 
   if (year) query.year = year
 
-  if (indentifiers) {
-    const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
+  if (identifiers) {
+    const userIdArray = Array.isArray(identifiers) ? identifiers : [identifiers];
     query.$or = userIdArray.flatMap((id: string) => [
       { user_id: id },
       { preferred_username: id },
