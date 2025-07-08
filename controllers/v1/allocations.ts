@@ -1,31 +1,22 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQueryField } from "../../utils"
+import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IGroup from "../../interfaces/group"
 import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
-function getIdentifier(res: Response) {
-  const { user } = res.locals
-  return getUserId(user) || getUsername(user)
-}
-
 export const get_allocations_of_user = async (req: Request, res: Response) => {
   let identifier: string | undefined = req.params.indentifier
-  if (identifier === "self") identifier = getIdentifier(res)
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
+  if (!identifier || (identifier === "self" && !res.locals.user)) {
+    throw createHttpError(400, `User not authenticated or ID not provided`);
+  }
 
   const { year } = req.query as any
 
-  const { field, value } = resolveUserQueryField(identifier);
-
-  const query: any = {
-    [field]: value,
-  };
-
+  const query: any = resolveUserQuery({ identifier, user: res.locals.user });
   if (year) query.year = year;
 
   const allocations = await Allocation.find(query).sort("year")
@@ -112,19 +103,15 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
 export const get_user_allocations_by_year = async (
   year: Number,
-  identifier: string
+  identifierQuery: any
 ) => {
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
+  if (!identifierQuery) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
   const limit = DEFAULT_BATCH_SIZE
   const skip = 0
-  const { field, value } = resolveUserQueryField(identifier);
-
-  const query: any = {
-    year,
-    [field]: value,
-  };
+  const query: any = identifierQuery;
+  query.year = year
 
   const allocations = await Allocation.findOne(query)
     .skip(Number(skip))
@@ -176,12 +163,12 @@ export const create_allocation = async (req: Request, res: Response) => {
   } = req.body
 
   let identifier: string | undefined = req.params.indentifier
-  if (identifier === "self") identifier = getIdentifier(res)
-
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
+  if (!identifier || (identifier === "self" && !res.locals.user)) {
+    throw createHttpError(400, `User not authenticated or ID not provided`);
+  }
   if (!year) throw createHttpError(400, `Year not provided`)
 
-  const userIdentifierFields = resolveUserEntryFields(res.locals.user);
+  const userIdentifierFields = resolveUserEntryFields({ identifier, user: res.locals.user });
 
   const allocation_properties = {
     year,
@@ -224,10 +211,10 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 
   if (indentifiers) {
     const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
-    query.$or = userIdArray.map((id: string) => {
-      const { field, value } = resolveUserQueryField(id);
-      return { [field]: value };
-    });
+    query.$or = userIdArray.flatMap((id: string) => [
+      { user_id: id },
+      { preferred_username: id },
+    ]);
   }
 
   const allocations = await Allocation.find(query)

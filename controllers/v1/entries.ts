@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQueryField } from "../../utils"
+import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IAllocation from "../../interfaces/allocation"
@@ -12,15 +12,11 @@ import { Request, Response } from "express"
 
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
-function get_identifier(res: Response) {
-  const { user } = res.locals
-  return getUserId(user) || getUsername(user)
-}
-
 export const get_entries_of_user = async (req: Request, res: Response) => {
   let identifier: string | undefined = req.params.indentifier
-  if (identifier === "self") identifier = get_identifier(res)
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
+  if (!identifier || (identifier === "self" && !res.locals.user)) {
+    throw createHttpError(400, `User not authenticated or ID not provided`);
+  }
 
   const {
     year = new Date().getFullYear(),
@@ -33,11 +29,14 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const { field, value } = resolveUserQueryField(identifier);
-
+  let identifierQuery = resolveUserQuery({ identifier, user: res.locals.user })
   const query = {
-    [field]: value,
-    date: { $gte: start_of_date, $lte: end_of_date },
+    $and: [
+      identifierQuery,
+      {
+        date: { $gte: start_of_date, $lte: end_of_date },
+      },
+    ],
   };
 
   const entries = await Entry.find(query).sort("date")
@@ -58,12 +57,13 @@ export const create_entry = async (req: Request, res: Response) => {
   } = req.body
 
   let identifier: string | undefined = req.params.indentifier
-  if (identifier === "self") identifier = get_identifier(res)
+  if (!identifier || (identifier === "self" && !res.locals.user)) {
+    throw createHttpError(400, `User not authenticated or ID not provided`);
+  }
 
-  if (!identifier) throw createHttpError(400, `User ID or username not provided`)
   if (!date) throw createHttpError(400, `Date not provided`)
 
-  const userIdentifierFields = resolveUserEntryFields(res.locals.user);
+  const userIdentifierFields = resolveUserEntryFields({ identifier, user: res.locals.user });
 
   const entry_properties = {
     ...userIdentifierFields,
@@ -129,10 +129,10 @@ export const get_all_entries = async (req: Request, res: Response) => {
 
   if (indentifiers) {
     const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
-    query.$or = userIdArray.map((id: string) => {
-      const { field, value } = resolveUserQueryField(id);
-      return { [field]: value };
-    });
+    query.$or = userIdArray.flatMap((id: string) => [
+      { user_id: id },
+      { preferred_username: id },
+    ]);
   }
 
   const entries = await Entry.find(query)
