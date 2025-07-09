@@ -1,16 +1,20 @@
 import IUser from "./interfaces/user"
 export const getUserId = (user: IUser) => user._id || user.properties?._id
-export const getUsername = (user: any) => user.preferred_username || user.username
+export const getOtherUserIdentifier = (user: any) => user[LEGACY_AUTH_IDENTIFIER] || user[OIDC_AUTH_IDENTIFIER]
+
+const {
+    OIDC_AUTH_IDENTIFIER = "preferred_username",
+    LEGACY_AUTH_IDENTIFIER = "username" } = process.env
 
 export const resolveUserQuery = ({ identifier, user }: { identifier?: string; user?: any }) => {
     if (identifier === "self" && user) {
         const orQuery = [];
 
         const userId = getUserId(user);
-        const username = getUsername(user);
+        const otherUserIdentifier = getOtherUserIdentifier(user);
 
         if (userId) orQuery.push({ user_id: userId });
-        if (username) orQuery.push({ preferred_username: username });
+        if (otherUserIdentifier) orQuery.push({ oidc_user_identifier: otherUserIdentifier });
 
         return {
             $or: orQuery,
@@ -19,15 +23,15 @@ export const resolveUserQuery = ({ identifier, user }: { identifier?: string; us
     return {
         $or: [
             { user_id: identifier },
-            { preferred_username: identifier }
+            { oidc_user_identifier: identifier }
         ]
     };
 }
 
 export const resolveUserEntryFields = (user: any) => {
-    return user._id && user.username && !user.preferred_username
-        ? { user_id: user._id, preferred_username: user.username } // legacy
-        : { preferred_username: user.preferred_username }; // OIDC
+    return user._id && user.username && !user[OIDC_AUTH_IDENTIFIER]
+        ? { user_id: user._id, oidc_user_identifier: user[LEGACY_AUTH_IDENTIFIER] } // legacy
+        : { oidc_user_identifier: user[OIDC_AUTH_IDENTIFIER] }; // OIDC
 };
 
 export const collectByKeys = <T>(

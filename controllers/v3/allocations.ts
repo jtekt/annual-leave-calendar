@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQuery } from "../../utils"
+import { collectByKeys, getUserId, getOtherUserIdentifier, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IGroup from "../../interfaces/group"
@@ -57,12 +57,12 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
   const identifiers = users.flatMap(user => {
     const user_id = getUserId(user);
-    const preferred_username = getUsername(user);
+    const oidc_user_identifier = getOtherUserIdentifier(user);
 
-    const clauses: { user_id?: string; preferred_username?: string }[] = [];
+    const clauses: { user_id?: string; oidc_user_identifier?: string }[] = [];
 
     if (user_id) clauses.push({ user_id });
-    if (preferred_username) clauses.push({ preferred_username });
+    if (oidc_user_identifier) clauses.push({ oidc_user_identifier });
 
     return clauses;
   });
@@ -77,15 +77,15 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
   const allocations_mapping = collectByKeys<IAllocation>(
     result_allocations.allocations,
-    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
+    (allocation) => [allocation.user_id, (allocation as any).oidc_user_identifier],
     (acc, allocation, key) => {
       acc[key] = allocation;
     }
   );
 
   const output = users.map((user: IGroup) => {
-    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
-    if (!keys.length) throw new Error("User has no user_id or preferred_username");
+    const keys = [getUserId(user), getOtherUserIdentifier(user)].filter(Boolean);
+    if (!keys.length) throw new Error("User has no user_id or oidc_user_identifier");
 
     const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
 
@@ -126,7 +126,7 @@ export const get_user_allocations_by_year = async (
 
 export const get_user_array_allocations_by_year = async (
   year: Number,
-  identifiers: { user_id?: string; preferred_username?: string }[]
+  identifiers: { user_id?: string; oidc_user_identifier?: string }[]
 ) => {
   if (!identifiers || !identifiers.length)
     throw createHttpError(400, `No user identifiers provided`)
@@ -162,8 +162,6 @@ export const create_allocation = async (req: Request, res: Response) => {
     year,
     leaves = { current_year_grants: 0, carried_over: 0 },
     reserve = { current_year_grants: 0, carried_over: 0 },
-    user_id,
-    preferred_username
   } = req.body
 
   let identifier: string | undefined = req.params.identifier
@@ -177,12 +175,8 @@ export const create_allocation = async (req: Request, res: Response) => {
       }
       userFields = resolveUserEntryFields(res.locals.user);
     } else
-      userFields = { preferred_username: identifier };
+      userFields = { oidc_user_identifier: identifier };
 
-  } else if (user_id || preferred_username) {
-    userFields = {};
-    if (user_id) userFields.user_id = user_id;
-    if (preferred_username) userFields.preferred_username = preferred_username;
   } else {
     throw createHttpError(400, "User identifier not provided");
   }
@@ -222,7 +216,7 @@ export const get_all_allocations = async (req: Request, res: Response) => {
     const userIdArray = Array.isArray(identifiers) ? identifiers : [identifiers];
     query.$or = userIdArray.flatMap((id: string) => [
       { user_id: id },
-      { preferred_username: id },
+      { oidc_user_identifier: id },
     ]);
   }
 

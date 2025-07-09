@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQuery } from "../../utils"
+import { collectByKeys, getUserId, getOtherUserIdentifier, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import IEntry from "../../interfaces/entry"
 import IAllocation from "../../interfaces/allocation"
 import { get_user_allocations_by_year, get_user_array_allocations_by_year } from "./allocations"
@@ -14,10 +14,8 @@ const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 export const get_entries_of_user = async (req: Request, res: Response) => {
   let identifier: string | undefined = req.params.identifier
   if (!identifier) {
-    console.log("here > !identifier")
     throw createHttpError(400, `User not authenticated or ID not provided`);
   } else if (identifier === "self" && !res.locals.user) {
-    console.log("here > !res.locals.user")
     throw createHttpError(401, `User not authenticated or ID not provided`);
   }
 
@@ -73,7 +71,7 @@ export const create_entry = async (req: Request, res: Response) => {
       }
       userFields = resolveUserEntryFields(res.locals.user);
     } else
-      userFields = { preferred_username: identifier };
+      userFields = { oidc_user_identifier: identifier };
   } else {
     throw createHttpError(400, "User identifier not provided");
   }
@@ -101,7 +99,7 @@ export const create_entry = async (req: Request, res: Response) => {
 export const create_entries = async (req: Request, res: Response) => {
   const entries = req.body
 
-  if (entries.some((entry: any) => !entry.user_id && !entry.preferred_username))
+  if (entries.some((entry: any) => !entry.user_id && !entry.oidc_user_identifier))
     throw createHttpError(400, `User ID not provided`)
   if (entries.some(({ date }: IEntry) => !date))
     throw createHttpError(400, `User ID not provided`)
@@ -133,7 +131,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
     const userIdArray = Array.isArray(identifiers) ? identifiers : [identifiers];
     query.$or = userIdArray.flatMap((id: string) => [
       { user_id: id },
-      { preferred_username: id },
+      { oidc_user_identifier: id },
     ]);
   }
 
@@ -192,17 +190,17 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
   const identifiers = users.flatMap(user => {
-    const ids: { user_id?: string; preferred_username?: string }[] = [];
+    const ids: { user_id?: string; oidc_user_identifier?: string }[] = [];
 
     const user_id = getUserId(user);
-    const username = getUsername(user);
+    const oidc_user_identifier = getOtherUserIdentifier(user);
 
-    if (user_id && username) {
-      ids.push({ user_id }, { preferred_username: username });
+    if (user_id && oidc_user_identifier) {
+      ids.push({ user_id }, { oidc_user_identifier });
     } else if (user_id) {
       ids.push({ user_id });
-    } else if (username) {
-      ids.push({ preferred_username: username });
+    } else if (oidc_user_identifier) {
+      ids.push({ oidc_user_identifier });
     }
 
     return ids;
@@ -222,7 +220,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   const entries_mapping = collectByKeys<IEntry>(
     entries,
-    (entry) => [entry.user_id, (entry as any).preferred_username],
+    (entry) => [entry.user_id, (entry as any).oidc_user_identifier],
     (acc, entry, key) => {
       acc[key] = acc[key] || [];
       acc[key].push(entry);
@@ -236,15 +234,15 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   const allocations_mapping = collectByKeys<IAllocation>(
     result_allocations.allocations,
-    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
+    (allocation) => [allocation.user_id, (allocation as any).oidc_user_identifier],
     (acc, allocation, key) => {
       acc[key] = allocation;
     }
   );
 
   const output = users.map((user: any) => {
-    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
-    if (!keys.length) throw new Error("User has no user_id or preferred_username");
+    const keys = [getUserId(user), getOtherUserIdentifier(user)].filter(Boolean);
+    if (!keys.length) throw new Error("User has no user_id or oidc_user_identifier");
 
     const entries: IEntry[] = Array.from(
       new Map(
@@ -313,12 +311,12 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
   const identifiers = users.flatMap(user => {
     const user_id = getUserId(user);
-    const preferred_username = getUsername(user);
+    const oidc_user_identifier = getOtherUserIdentifier(user);
 
-    const clauses: { user_id?: string; preferred_username?: string }[] = [];
+    const clauses: { user_id?: string; oidc_user_identifier?: string }[] = [];
 
     if (user_id) clauses.push({ user_id });
-    if (preferred_username) clauses.push({ preferred_username });
+    if (oidc_user_identifier) clauses.push({ oidc_user_identifier });
 
     return clauses;
   });
@@ -335,7 +333,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
   const entries_mapping = collectByKeys<IEntry>(
     entries,
-    (entry) => [entry.user_id, (entry as any).preferred_username],
+    (entry) => [entry.user_id, (entry as any).oidc_user_identifier],
     (acc, entry, key) => {
       acc[key] = acc[key] || [];
       acc[key].push(entry);
@@ -349,15 +347,15 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
   const allocations_mapping = collectByKeys<IAllocation>(
     result_allocations.allocations,
-    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
+    (allocation) => [allocation.user_id, (allocation as any).oidc_user_identifier],
     (acc, allocation, key) => {
       acc[key] = allocation;
     }
   );
 
   const output = users.map((user: any) => {
-    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
-    if (!keys.length) throw new Error("User has no user_id or preferred_username");
+    const keys = [getUserId(user), getOtherUserIdentifier(user)].filter(Boolean);
+    if (!keys.length) throw new Error("User has no user_id or oidc_user_identifier");
 
     const entries: IEntry[] = Array.from(
       new Map(

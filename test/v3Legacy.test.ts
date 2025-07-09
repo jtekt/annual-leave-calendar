@@ -34,7 +34,7 @@ describe("V3 Legacy test", () => {
   })
 
   describe("POST /v3/users/:identifier/entries", () => {
-    it("Should allow the creation of an entry with user_id and preferred_username", async () => {
+    it("Should allow the creation of an entry with user_id and oidc_user_identifier", async () => {
       const { status, body } = await request(app)
         .post(`/v3/users/self/entries`)
         .send({ date: `${new Date().getFullYear()}-01-01` })
@@ -43,7 +43,7 @@ describe("V3 Legacy test", () => {
       entry_id = body._id
       expect(status).to.equal(200)
       expect(body).to.have.property("user_id").that.is.a("string").and.is.not.empty
-      expect(body).to.have.property("preferred_username").that.is.a("string").and.is.not.empty
+      expect(body).to.have.property("oidc_user_identifier").that.is.a("string").and.is.not.empty
     })
 
     it("Should prevent the creation of an entry for anonymous users", async () => {
