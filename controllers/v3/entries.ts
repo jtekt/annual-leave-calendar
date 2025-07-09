@@ -57,8 +57,6 @@ export const create_entry = async (req: Request, res: Response) => {
     refresh = false,
     plus_one = false,
     reserve = false,
-    user_id,
-    preferred_username
   } = req.body;
 
   const identifier = req.params.identifier;
@@ -76,11 +74,6 @@ export const create_entry = async (req: Request, res: Response) => {
       userFields = resolveUserEntryFields(res.locals.user);
     } else
       userFields = { preferred_username: identifier };
-
-  } else if (user_id || preferred_username) {
-    userFields = {};
-    if (user_id) userFields.user_id = user_id;
-    if (preferred_username) userFields.preferred_username = preferred_username;
   } else {
     throw createHttpError(400, "User identifier not provided");
   }
@@ -104,6 +97,18 @@ export const create_entry = async (req: Request, res: Response) => {
 
   res.send(entry);
 };
+
+export const create_entries = async (req: Request, res: Response) => {
+  const entries = req.body
+
+  if (entries.some((entry: any) => !entry.user_id && !entry.preferred_username))
+    throw createHttpError(400, `User ID not provided`)
+  if (entries.some(({ date }: IEntry) => !date))
+    throw createHttpError(400, `User ID not provided`)
+
+  const result = await Entry.insertMany(entries)
+  res.send(result)
+}
 
 export const get_all_entries = async (req: Request, res: Response) => {
   const {
