@@ -6,6 +6,15 @@ import createHttpError from "http-errors"
 
 const { OIDC_JWKS_URI, IDENTIFICATION_URL } = process.env
 
+export const legacyMiddleware = () => {
+    if (!IDENTIFICATION_URL) throw createHttpError(400, `IDENTIFICATION_URL not provided`);
+    return legacyAuth({ url: IDENTIFICATION_URL });
+}
+
+export const oidcMiddleware = () => {
+    if (!OIDC_JWKS_URI) throw createHttpError(400, `OIDC_JWKS_URI not provided`);
+    return oidcAuth({ jwksUri: OIDC_JWKS_URI });
+}
 
 export const getMiddlewareChain = () => {
     const middlewareList = [];
