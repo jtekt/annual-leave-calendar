@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getUserId } from "../../utils"
+import { fetchUserData, getUserId, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -9,20 +9,24 @@ import IGroup from "../../interfaces/group"
 import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
-function get_current_user_id(res: Response) {
+function get_current_user(res: Response) {
   const { user } = res.locals
-  return getUserId(user)
+  return user
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  let identifier: string | undefined = req.params.user_id
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
+  let current_user = get_current_user(res)
+  const isSelf = identifier === "self" || identifier === current_user._id
 
+  if (!isSelf) {
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
+  }
   const { year } = req.query as any
 
-  const query: any = {}
-  query.user_id = user_id
+  const query: any = resolveUserQuery({ identifier, user: current_user });
   if (year) query.year = year
 
   const allocations = await Allocation.find(query).sort("year")
@@ -155,20 +159,27 @@ export const create_allocation = async (req: Request, res: Response) => {
     reserve = { current_year_grants: 0, carried_over: 0 },
   } = req.body
 
-  let user_id: string | undefined = req.params.user_id
-  if (user_id === "self") user_id = get_current_user_id(res)
-
-  if (!user_id) throw createHttpError(400, `User ID not provided`)
+  let identifier: string | undefined = req.params.user_id
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
+
+  let current_user = get_current_user(res)
+  const isSelf = identifier === "self" || identifier === current_user._id
+  if (!isSelf) {
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
+  }
+
+  let userFields = resolveUserEntryFields(res.locals.user);
 
   const allocation_properties = {
     year,
-    user_id,
+    ...userFields,
     leaves,
     reserve,
   }
 
-  const filter = { year, user_id }
+  const filter = { year, ...userFields }
   const options = { new: true, upsert: true }
 
   const allocation = await Allocation.findOneAndUpdate(

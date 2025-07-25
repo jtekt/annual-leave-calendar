@@ -1,10 +1,13 @@
+import createHttpError from "http-errors"
 import IUser from "./interfaces/user"
+import axios from "axios"
 export const getUserId = (user: IUser) => user._id || user.properties?._id
 export const getOtherUserIdentifier = (user: any) => user[LEGACY_AUTH_IDENTIFIER] || user[OIDC_AUTH_IDENTIFIER]
 
 const {
     OIDC_AUTH_IDENTIFIER = "preferred_username",
-    LEGACY_AUTH_IDENTIFIER = "username" } = process.env
+    LEGACY_AUTH_IDENTIFIER = "username",
+    USER_MANAGER_API_URL } = process.env
 
 export const resolveUserQuery = ({ identifier, user }: { identifier?: string; user?: any }) => {
     if (identifier === "self" && user) {
@@ -46,3 +49,19 @@ export const collectByKeys = <T>(
         }
         return acc;
     }, initial);
+
+export const fetchUserData = async (user_id: string, authorization?: string) => {
+    try {
+        const res = await axios.get(`${USER_MANAGER_API_URL}/${user_id}`, {
+            headers: {
+                Authorization: authorization || "",
+            }
+        })
+        return res.data
+    } catch (error: any) {
+        console.error(`[USER_MANAGER_API] Failed to fetch ${user_id}:`, error?.message || error)
+        throw error?.response?.status === 403
+            ? createHttpError(400, `Unauthorized to access USER_MANAGER_API`)
+            : createHttpError(400, `Failed to fetch from USER_MANAGER_API`)
+    }
+}
