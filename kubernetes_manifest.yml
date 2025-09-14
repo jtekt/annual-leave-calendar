@@ -23,6 +23,12 @@ spec:
           env:
             - name: IDENTIFICATION_URL
               value: http://employee-manager/v3/users/self
+            - name: OIDC_JWKS_URI
+              value: http://10.115.1.100:30416/realms/jtekt/protocol/openid-connect/certs
+            - name: OIDC_AUTH_IDENTIFIER
+              value: preferred_username
+            - name: LEGACY_AUTH_IDENTIFIER
+              value: username
 ---
 apiVersion: v1
 kind: Service
