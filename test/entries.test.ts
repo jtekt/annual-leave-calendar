@@ -37,7 +37,7 @@ describe("/entries", () => {
     it("Should allow the creation of an entry", async () => {
       const { status, body } = await request(app)
         .post(`/users/self/entries`)
-        .send({ date: `${new Date().getFullYear()}-01-01` })
+        .send({ date: `${new Date().getFullYear()}-03-01` })
         .set("Authorization", `Bearer ${jwt}`)
 
       entry_id = body._id
