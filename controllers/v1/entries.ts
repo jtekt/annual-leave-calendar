@@ -1,26 +1,34 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getUsername, resolveUserEntryFields, resolveUserQueryField } from "../../utils"
+import { fetchUserData, getUserId, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
+import IUser from "../../interfaces/user"
 import IAllocation from "../../interfaces/allocation"
+import IGroup from "../../interfaces/group"
 import { get_user_array_allocations_by_year } from "./allocations"
 
-import { DEFAULT_BATCH_SIZE } from "../../constants"
+import { TOTAL_HEADER, DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
-function get_identifier(res: Response) {
+function get_current_user(res: Response) {
   const { user } = res.locals
-  return getUserId(user) || getUsername(user)
+  return user
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.indentifier
-  if (identifier === "self") identifier = get_identifier(res)
+  let identifier: string | undefined = req.params.user_id
   if (!identifier) throw createHttpError(400, `User ID not provided`)
+  let current_user = get_current_user(res)
+  const isSelf = identifier === "self" || identifier === current_user._id
+
+  if (!isSelf) {
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
+  }
 
   const {
     year = new Date().getFullYear(),
@@ -33,11 +41,14 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const { field, value } = resolveUserQueryField(identifier);
-
+  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
   const query = {
-    [field]: value,
-    date: { $gte: start_of_date, $lte: end_of_date },
+    $and: [
+      identifierQuery,
+      {
+        date: { $gte: start_of_date, $lte: end_of_date },
+      },
+    ],
   };
 
   const entries = await Entry.find(query).sort("date")
@@ -56,17 +67,21 @@ export const create_entry = async (req: Request, res: Response) => {
     plus_one = false,
     reserve = false,
   } = req.body
+  let identifier: string | undefined = req.params.user_id
+  if (!identifier) throw createHttpError(400, `User ID not provided`)
+  let current_user = get_current_user(res)
+  const isSelf = identifier === "self" || identifier === current_user._id
 
-  let identifier: string | undefined = req.params.indentifier
-  if (identifier === "self") identifier = get_identifier(res)
-
-  if (!identifier) throw createHttpError(400, `User ID or username not provided`)
   if (!date) throw createHttpError(400, `Date not provided`)
 
-  const userIdentifierFields = resolveUserEntryFields(res.locals.user);
+  if (!isSelf) {
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
+  }
 
+  let userFields = resolveUserEntryFields(current_user);
   const entry_properties = {
-    ...userIdentifierFields,
+    ...userFields,
     date,
     type,
     am,
@@ -77,7 +92,10 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve,
   }
 
-  const filter = { date, ...userIdentifierFields }
+  const filter = {
+    date,
+    ...userFields
+  }
   const options = { new: true, upsert: true }
 
   const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
@@ -88,9 +106,8 @@ export const create_entry = async (req: Request, res: Response) => {
 export const create_entries = async (req: Request, res: Response) => {
   const entries = req.body
 
-  if (entries.some((entry: any) => !entry.user_id && !entry.preferred_username))
-    throw createHttpError(400, `User ID or preferred_username not provided`);
-
+  if (entries.some(({ user_id }: IEntry) => !user_id))
+    throw createHttpError(400, `User ID not provided`)
   if (entries.some(({ date }: IEntry) => !date))
     throw createHttpError(400, `User ID not provided`)
 
@@ -113,7 +130,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
     year = new Date().getFullYear(),
     start_date,
     end_date,
-    indentifiers,
+    user_ids,
     limit = DEFAULT_BATCH_SIZE,
     skip = 0,
   } = req.query as any
@@ -127,13 +144,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
-  if (indentifiers) {
-    const userIdArray = Array.isArray(indentifiers) ? indentifiers : [indentifiers];
-    query.$or = userIdArray.map((id: string) => {
-      const { field, value } = resolveUserQueryField(id);
-      return { [field]: value };
-    });
-  }
+  if (user_ids) query.$or = user_ids.map((user_id: string) => ({ user_id }))
 
   const entries = await Entry.find(query)
     .skip(Number(skip))
@@ -262,62 +273,47 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const identifiers = users.flatMap(user => {
-    const user_id = getUserId(user);
-    const preferred_username = getUsername(user);
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserId(user),
+  }))
 
-    const clauses: { user_id?: string; preferred_username?: string }[] = [];
-
-    if (user_id) clauses.push({ user_id });
-    if (preferred_username) clauses.push({ preferred_username });
-
-    return clauses;
-  });
-
-  if (!identifiers.length)
+  if (!user_ids.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
 
   const query = {
-    $or: identifiers,
+    $or: user_ids,
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
   const entries = await Entry.find(query).sort("date")
 
-  const entries_mapping = collectByKeys<IEntry>(
-    entries,
-    (entry) => [entry.user_id, (entry as any).preferred_username],
-    (acc, entry, key) => {
-      acc[key] = acc[key] || [];
-      acc[key].push(entry);
-    }
-  );
+  const entries_mapping = entries.reduce((prev: any, entry: IEntry) => {
+    const { user_id } = entry
+    if (!prev[user_id]) prev[user_id] = []
+    prev[user_id].push(entry)
+    return prev
+  }, {})
 
   const result_allocations = await get_user_array_allocations_by_year(
     year,
-    identifiers
+    user_ids
   )
 
-  const allocations_mapping = collectByKeys<IAllocation>(
-    result_allocations.allocations,
-    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
-    (acc, allocation, key) => {
-      acc[key] = allocation;
-    }
-  );
+  const allocations_mapping = result_allocations.allocations.reduce(
+    (prev: any, allocation: IAllocation) => {
+      const { user_id } = allocation
+      if (!prev[user_id]) prev[user_id] = {}
+      prev[user_id] = allocation
+      return prev
+    },
+    {}
+  )
 
-  const output = users.map((user: any) => {
-    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
-    if (!keys.length) throw new Error("User has no user_id or preferred_username");
-
-    const entries: IEntry[] = Array.from(
-      new Map(
-        keys
-          .flatMap(key => entries_mapping[key] || [])
-          .map(entry => [entry._id.toString(), entry])
-      ).values()
-    );
-    const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
+  const output = users.map((user: IGroup) => {
+    const user_id = getUserId(user)
+    if (!user_id) throw "User has no ID"
+    const entries = entries_mapping[user_id] || []
+    const allocations = allocations_mapping[user_id] || null
 
     // FIXME: Two formats?
     // user.entries = entries
@@ -375,65 +371,49 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const identifiers = users.flatMap(user => {
-    const user_id = getUserId(user);
-    const preferred_username = getUsername(user);
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserId(user),
+  }))
 
-    const clauses: { user_id?: string; preferred_username?: string }[] = [];
-
-    if (user_id) clauses.push({ user_id });
-    if (preferred_username) clauses.push({ preferred_username });
-
-    return clauses;
-  });
-
-  if (!identifiers.length)
+  if (!user_ids.length)
     throw createHttpError(404, `Workplace ${workplace_id} appears to be empty`)
 
   const query = {
-    $or: identifiers,
+    $or: user_ids,
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
   const entries = await Entry.find(query).sort("date")
 
-  const entries_mapping = collectByKeys<IEntry>(
-    entries,
-    (entry) => [entry.user_id, (entry as any).preferred_username],
-    (acc, entry, key) => {
-      acc[key] = acc[key] || [];
-      acc[key].push(entry);
-    }
-  );
+  const entries_mapping = entries.reduce((prev: any, entry: IEntry) => {
+    const { user_id } = entry
+    if (!prev[user_id]) prev[user_id] = []
+    prev[user_id].push(entry)
+    return prev
+  }, {})
 
   const result_allocations = await get_user_array_allocations_by_year(
     year,
-    identifiers
+    user_ids
   )
 
-  const allocations_mapping = collectByKeys<IAllocation>(
-    result_allocations.allocations,
-    (allocation) => [allocation.user_id, (allocation as any).preferred_username],
-    (acc, allocation, key) => {
-      acc[key] = allocation;
-    }
-  );
+  const allocations_mapping = result_allocations.allocations.reduce(
+    (prev: any, allocation: IAllocation) => {
+      const { user_id } = allocation
+      if (!prev[user_id]) prev[user_id] = {}
+      prev[user_id] = allocation
+      return prev
+    },
+    {}
+  )
 
-  const output = users.map((user: any) => {
-    const keys = [getUserId(user), getUsername(user)].filter(Boolean);
-    if (!keys.length) throw new Error("User has no user_id or preferred_username");
-
-    const entries: IEntry[] = Array.from(
-      new Map(
-        keys
-          .flatMap(key => entries_mapping[key] || [])
-          .map(entry => [entry._id.toString(), entry])
-      ).values()
-    );
-    const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
-
+  const output = users.map((user: IUser) => {
+    const user_id = getUserId(user)
+    if (!user_id) throw "User has no ID"
+    const entries = entries_mapping[user_id] || []
+    const allocations = allocations_mapping[user_id] || null
     // FIXME: Two formats?
-    // user.entries = entries
+    user.entries = entries
     return { user, entries, allocations }
   })
 

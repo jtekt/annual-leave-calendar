@@ -5,7 +5,6 @@ import "express-async-errors"
 import cors from "cors"
 import promBundle from "express-prom-bundle"
 import { author, version } from "./package.json"
-import auth from "@moreillon/express_identification_middleware"
 import {
   redactedConnectionString,
   connect as dbConnect,
@@ -18,7 +17,7 @@ import { Request, Response, NextFunction } from "express"
 import { TOTAL_HEADER } from "./constants"
 
 const {
-  APP_PORT = 80,
+  APP_PORT = 8080,
   IDENTIFICATION_URL,
   OIDC_JWKS_URI,
   GROUP_MANAGER_API_URL = "UNDEFINED",
@@ -71,3 +70,4 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
 
 // Export app for TDD
 export default app
+

@@ -60,7 +60,7 @@ describe("/entries", () => {
     })
   })
 
-  describe("GET /users/:indentifier/entries", () => {
+  describe("GET /users/:user_id/entries", () => {
     it("Should allow the query of entries of a user", async () => {
       const { status, body } = await request(app)
         .get(`/users/self/entries`)

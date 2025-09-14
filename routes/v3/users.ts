@@ -1,0 +1,16 @@
+import { Router } from "express"
+import { get_entries_of_user, create_entry } from "../../controllers/v3/entries"
+import {
+  get_allocations_of_user,
+  create_allocation,
+} from "../../controllers/v3/allocations"
+
+const router = Router()
+
+router.route("/:identifier/entries").get(get_entries_of_user).post(create_entry)
+router
+  .route("/:identifier/allocations")
+  .get(get_allocations_of_user)
+  .post(create_allocation)
+
+export default router

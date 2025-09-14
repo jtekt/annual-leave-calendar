@@ -4,7 +4,7 @@ import IAllocation from "../interfaces/allocation"
 const schema = new Schema<IAllocation>({
   year: { type: Number, required: true },
   user_id: { type: String },
-  preferred_username: { type: String },
+  oidc_user_identifier: { type: String },
   leaves: {
     current_year_grants: { type: Number, default: 0, required: true },
     carried_over: { type: Number, default: 0, required: true },
@@ -21,13 +21,13 @@ schema.index(
   { unique: true, partialFilterExpression: { user_id: { $exists: true } } }
 );
 
-// Unique when preferred_username exists
+// Unique when oidc_user_identifier exists
 schema.index(
-  { year: 1, preferred_username: 1 },
-  { unique: true, partialFilterExpression: { preferred_username: { $exists: true } } }
+  { year: 1, oidc_user_identifier: 1 },
+  { unique: true, partialFilterExpression: { oidc_user_identifier: { $exists: true } } }
 );
 schema.index({ user_id: 1 })
-schema.index({ preferred_username: 1 })
+schema.index({ oidc_user_identifier: 1 })
 schema.index({ year: 1 })
 
 const Model = model("allocations", schema)

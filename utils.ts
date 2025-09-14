@@ -1,19 +1,40 @@
+import createHttpError from "http-errors"
 import IUser from "./interfaces/user"
+import axios from "axios"
 export const getUserId = (user: IUser) => user._id || user.properties?._id
-export const getUsername = (user: any) => user.preferred_username || user.username
+export const getOtherUserIdentifier = (user: any) => user[LEGACY_AUTH_IDENTIFIER] || user[OIDC_AUTH_IDENTIFIER]
 
-const isLikelyPreferredUsername = (id: string) => /^00\d{6}$/.test(id);
+const {
+    OIDC_AUTH_IDENTIFIER = "preferred_username",
+    LEGACY_AUTH_IDENTIFIER = "username",
+    USER_MANAGER_API_URL } = process.env
 
-export const resolveUserQueryField = (id: string) => {
-    return isLikelyPreferredUsername(id)
-        ? { field: "preferred_username", value: id }
-        : { field: "user_id", value: id };
-};
+export const resolveUserQuery = ({ identifier, user }: { identifier?: string; user?: any }) => {
+    if (identifier === "self" && user) {
+        const orQuery = [];
+
+        const userId = getUserId(user);
+        const otherUserIdentifier = getOtherUserIdentifier(user);
+
+        if (userId) orQuery.push({ user_id: userId });
+        if (otherUserIdentifier) orQuery.push({ oidc_user_identifier: otherUserIdentifier });
+
+        return {
+            $or: orQuery,
+        };
+    }
+    return {
+        $or: [
+            { user_id: identifier },
+            { oidc_user_identifier: identifier }
+        ]
+    };
+}
 
 export const resolveUserEntryFields = (user: any) => {
-    return user._id && user.username && !user.preferred_username
-        ? { user_id: user._id, preferred_username: user.username } // legacy
-        : { preferred_username: user.preferred_username }; // OIDC
+    return user._id && user.username && !user[OIDC_AUTH_IDENTIFIER]
+        ? { user_id: user._id, oidc_user_identifier: user[LEGACY_AUTH_IDENTIFIER] } // legacy
+        : { oidc_user_identifier: user[OIDC_AUTH_IDENTIFIER] }; // OIDC
 };
 
 export const collectByKeys = <T>(
@@ -28,3 +49,19 @@ export const collectByKeys = <T>(
         }
         return acc;
     }, initial);
+
+export const fetchUserData = async (user_id: string, authorization?: string) => {
+    try {
+        const res = await axios.get(`${USER_MANAGER_API_URL}/${user_id}`, {
+            headers: {
+                Authorization: authorization || "",
+            }
+        })
+        return res.data
+    } catch (error: any) {
+        console.error(`[USER_MANAGER_API] Failed to fetch ${user_id}:`, error?.message || error)
+        throw error?.response?.status === 403
+            ? createHttpError(400, `Unauthorized to access USER_MANAGER_API`)
+            : createHttpError(400, `Failed to fetch from USER_MANAGER_API`)
+    }
+}
