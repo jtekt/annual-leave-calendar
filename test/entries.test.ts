@@ -60,21 +60,20 @@ describe("/entries", () => {
     })
   })
 
-  describe("GET /users/:user_id/entries", () => {
-    it("Should allow the query of entries of a user", async () => {
-      const { status, body } = await request(app)
-        .get(`/users/self/entries`)
-        .set("Authorization", `Bearer ${jwt}`)
-
-      expect(status).to.equal(200)
-      expect(body).to.have.lengthOf.above(0)
-    })
-  })
-
   describe("GET /entries/:entry_id", () => {
     it("Should allow the query of an entry", async () => {
       const { status } = await request(app)
         .get(`/entries/${entry_id}`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+  })
+
+  describe("GET /users/:user_id/entries", () => {
+    it("Should allow the query of entries of a user", async () => {
+      const { status, body } = await request(app)
+        .get(`/users/self/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
