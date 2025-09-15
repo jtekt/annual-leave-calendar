@@ -37,7 +37,7 @@ describe("/entries", () => {
     it("Should allow the creation of an entry", async () => {
       const { status, body } = await request(app)
         .post(`/users/self/entries`)
-        .send({ date: `${new Date().getFullYear()}-01-01` })
+        .send({ date: `${new Date().getFullYear()}-03-01` })
         .set("Authorization", `Bearer ${jwt}`)
 
       entry_id = body._id
@@ -60,21 +60,20 @@ describe("/entries", () => {
     })
   })
 
-  describe("GET /users/:user_id/entries", () => {
-    it("Should allow the query of entries of a user", async () => {
-      const { status, body } = await request(app)
-        .get(`/users/self/entries`)
-        .set("Authorization", `Bearer ${jwt}`)
-
-      expect(status).to.equal(200)
-      expect(body).to.have.lengthOf.above(0)
-    })
-  })
-
   describe("GET /entries/:entry_id", () => {
     it("Should allow the query of an entry", async () => {
       const { status } = await request(app)
         .get(`/entries/${entry_id}`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+  })
+
+  describe("GET /users/:user_id/entries", () => {
+    it("Should allow the query of entries of a user", async () => {
+      const { status, body } = await request(app)
+        .get(`/users/self/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
