@@ -17,7 +17,7 @@ import { Request, Response, NextFunction } from "express"
 import { TOTAL_HEADER } from "./constants"
 
 const {
-  APP_PORT = 8080,
+  APP_PORT = 80,
   IDENTIFICATION_URL,
   OIDC_JWKS_URI,
   GROUP_MANAGER_API_URL = "UNDEFINED",
