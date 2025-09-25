@@ -29,6 +29,8 @@ spec:
               value: preferred_username
             - name: LEGACY_AUTH_IDENTIFIER
               value: username
+            - name: USER_MANAGER_API_URL
+              value: http://10.115.1.100:30097/v3/users
 ---
 apiVersion: v1
 kind: Service
