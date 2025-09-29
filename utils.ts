@@ -52,7 +52,7 @@ export const collectByKeys = <T>(
 
 export const fetchUserData = async (user_id: string, authorization?: string) => {
     try {
-        const res = await axios.get(`${USER_MANAGER_API_URL}/${user_id}`, {
+        const res = await axios.get(`${USER_MANAGER_API_URL}/v3/users/${user_id}`, {
             headers: {
                 Authorization: authorization || "",
             }

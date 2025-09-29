@@ -66,7 +66,7 @@ test:
       -e MONGODB_DB=nenkyuu_calendar_banana
       -e GROUP_MANAGER_API_URL=http://10.115.1.100:31999
       -e WORKPLACE_MANAGER_API_URL=http://10.115.1.100:32001
-      -e IDENTIFICATION_URL=http://10.115.1.100:30097/v3/users/self
+      -e USER_MANAGER_API_URL=http://10.115.1.100:30097
       -e LOGIN_URL=http://10.115.1.100:30097/v3/auth/login
       -e OIDC_JWKS_URI=http://10.115.1.100:30416/realms/jtekt/protocol/openid-connect/certs
       -e TEST_USER_USERNAME=$TEST_USER_USERNAME

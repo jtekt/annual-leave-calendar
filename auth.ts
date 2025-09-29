@@ -4,11 +4,11 @@ import oidcAuth from "@moreillon/express-oidc"
 import { authMiddlewareChainer } from "@moreillon/express-auth-middleware-chainer"
 import createHttpError from "http-errors"
 
-const { OIDC_JWKS_URI, IDENTIFICATION_URL } = process.env
+const { OIDC_JWKS_URI, USER_MANAGER_API_URL } = process.env
 
 export const legacyMiddleware = () => {
-    if (!IDENTIFICATION_URL) throw createHttpError(400, `IDENTIFICATION_URL not provided`);
-    return legacyAuth({ url: IDENTIFICATION_URL });
+    if (!USER_MANAGER_API_URL) throw createHttpError(400, `USER_MANAGER_API_URL not provided`);
+    return legacyAuth({ url: `${USER_MANAGER_API_URL}/v3/users/self` });
 }
 
 export const oidcMiddleware = () => {
@@ -22,15 +22,15 @@ export const getMiddlewareChain = () => {
     if (OIDC_JWKS_URI) {
         middlewareList.push(
             awaitMiddleware(
-                oidcAuth({ jwksUri: OIDC_JWKS_URI, lax: !!IDENTIFICATION_URL })
+                oidcAuth({ jwksUri: OIDC_JWKS_URI, lax: !!USER_MANAGER_API_URL })
             )
         );
     }
 
-    if (IDENTIFICATION_URL) {
+    if (USER_MANAGER_API_URL) {
         middlewareList.push(
             awaitMiddleware(
-                legacyAuth({ url: IDENTIFICATION_URL })
+                legacyAuth({ url: `${USER_MANAGER_API_URL}/v3/users/self` })
             )
         );
     }
