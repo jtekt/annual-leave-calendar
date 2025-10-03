@@ -25,35 +25,42 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
 
-  if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
+  try {
+    if (!isSelf) {
+      current_user = await fetchUserData(
+        identifier, req.headers.authorization)
+    }
+
+    const {
+      year = new Date().getFullYear(),
+      start_date,
+      end_date,
+    } = req.query as any
+
+    const start_of_date = start_date
+      ? new Date(start_date)
+      : new Date(`${year}/01/01`)
+    const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
+
+    let identifierQuery = resolveUserQuery({ identifier, user: current_user })
+    const query = {
+      $and: [
+        identifierQuery,
+        {
+          date: { $gte: start_of_date, $lte: end_of_date },
+        },
+      ],
+    };
+
+    const entries = await Entry.find(query).sort("date")
+
+    res.send(entries)
+  } catch (error: any) {
+    console.log(`[ v1 >  get_entries_of_user] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
   }
-
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-  } = req.query as any
-
-  const start_of_date = start_date
-    ? new Date(start_date)
-    : new Date(`${year}/01/01`)
-  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
-
-  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
-  const query = {
-    $and: [
-      identifierQuery,
-      {
-        date: { $gte: start_of_date, $lte: end_of_date },
-      },
-    ],
-  };
-
-  const entries = await Entry.find(query).sort("date")
-
-  res.send(entries)
 }
 
 export const create_entry = async (req: Request, res: Response) => {
@@ -74,40 +81,48 @@ export const create_entry = async (req: Request, res: Response) => {
 
   if (!date) throw createHttpError(400, `Date not provided`)
 
-  if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
-  }
+  try {
+    if (!isSelf) {
+      current_user = await fetchUserData(
+        identifier, req.headers.authorization)
+    }
 
-  // --- Normalize date ---
-  // Always convert to a real Date object at UTC midnight
-  date = new Date(date)
-  if (isNaN(date.getTime())) {
-    throw createHttpError(400, `Invalid date provided: ${req.body.date}`)
-  }
-  date.setUTCHours(0, 0, 0, 0)
-  const userFields = resolveUserEntryFields(current_user)
-  const entry_properties = {
-    ...userFields,
-    date,
-    type,
-    am,
-    pm,
-    taken,
-    refresh,
-    plus_one,
-    reserve,
-  }
+    // --- Normalize date ---
+    // Always convert to a real Date object at UTC midnight
+    date = new Date(date)
+    if (isNaN(date.getTime())) {
+      throw createHttpError(400, `Invalid date provided: ${req.body.date}`)
+    }
+    date.setUTCHours(0, 0, 0, 0)
+    const userFields = resolveUserEntryFields(current_user)
+    const entry_properties = {
+      ...userFields,
+      date,
+      type,
+      am,
+      pm,
+      taken,
+      refresh,
+      plus_one,
+      reserve,
+    }
 
-  const filter = {
-    date,
-    ...userFields
+    const filter = {
+      date,
+      ...userFields
+    }
+    const options = { new: true, upsert: true }
+
+    const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
+
+    console.log(entry)
+    res.send(entry)
+  } catch (error: any) {
+    console.log(`[ v1 >  create_entry] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
   }
-  const options = { new: true, upsert: true }
-
-  const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
-
-  res.send(entry)
 }
 
 export const create_entries = async (req: Request, res: Response) => {
@@ -118,8 +133,15 @@ export const create_entries = async (req: Request, res: Response) => {
   if (entries.some(({ date }: IEntry) => !date))
     throw createHttpError(400, `User ID not provided`)
 
-  const result = await Entry.insertMany(entries)
-  res.send(result)
+  try {
+    const result = await Entry.insertMany(entries)
+    res.send(result)
+  } catch (error: any) {
+    console.log(`[ v1 >  create_entries] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
+  }
 }
 
 export const get_single_entry = async (req: Request, res: Response) => {
@@ -127,9 +149,16 @@ export const get_single_entry = async (req: Request, res: Response) => {
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  const entry = await Entry.findById(_id)
+  try {
+    const entry = await Entry.findById(_id)
 
-  res.send(entry)
+    res.send(entry)
+  } catch (error: any) {
+    console.log(`[ v1 >  get_single_entry] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
+  }
 }
 
 export const get_all_entries = async (req: Request, res: Response) => {
@@ -153,94 +182,129 @@ export const get_all_entries = async (req: Request, res: Response) => {
 
   if (user_ids) query.$or = user_ids.map((user_id: string) => ({ user_id }))
 
-  const entries = await Entry.find(query)
-    .skip(Number(skip))
-    .limit(Math.max(Number(limit), 0))
+  try {
+    const entries = await Entry.find(query)
+      .skip(Number(skip))
+      .limit(Math.max(Number(limit), 0))
 
-  const total = await Entry.countDocuments(query)
+    const total = await Entry.countDocuments(query)
 
-  const response = {
-    start_of_date,
-    end_of_date,
-    limit,
-    skip,
-    total,
-    entries,
+    const response = {
+      start_of_date,
+      end_of_date,
+      limit,
+      skip,
+      total,
+      entries,
+    }
+
+    res.send(response)
+  } catch (error: any) {
+    console.log(`[ v1 >  get_all_entries] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
   }
-
-  res.send(response)
 }
 
 export const update_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  try {
+    const { _id } = req.params
 
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+    if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  const result = await Entry.findByIdAndUpdate(_id, req.body, { new: true })
-  res.send(result)
+    const result = await Entry.findByIdAndUpdate(_id, req.body, { new: true })
+    res.send(result)
+  } catch (error: any) {
+    console.log(`[ v1 >  update_entry] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
+  }
 }
 
 export const update_entries = async (req: Request, res: Response) => {
-  const entries = req.body
+  try {
+    const entries = req.body
 
-  if (entries.some(({ _id }: IEntry) => !_id))
-    throw createHttpError(400, `_id not provided`)
-  if (entries.some(({ type }: IEntry) => !type))
-    throw createHttpError(400, `type not provided`)
+    if (entries.some(({ _id }: IEntry) => !_id))
+      throw createHttpError(400, `_id not provided`)
+    if (entries.some(({ type }: IEntry) => !type))
+      throw createHttpError(400, `type not provided`)
 
-  const bulkOps = entries.map((entry: IEntry) => {
-    const { type } = entry
+    const bulkOps = entries.map((entry: IEntry) => {
+      const { type } = entry
 
-    let opts = {
-      updateOne: {
-        filter: {
-          _id: mongoose.Types.ObjectId(entry._id),
-        },
-        update: {
-          $set: {
-            type: String(type),
+      let opts = {
+        updateOne: {
+          filter: {
+            _id: mongoose.Types.ObjectId(entry._id),
+          },
+          update: {
+            $set: {
+              type: String(type),
+            },
           },
         },
-      },
-    }
+      }
 
-    return opts
-  })
+      return opts
+    })
 
-  // Warning: bulkWrite does not apply validation
-  // Could consider using a for loop and updateOne with upsert
-  // However, this would seriously impact performance
-  const result = await Entry.collection.bulkWrite(bulkOps)
-  res.send(result)
+    // Warning: bulkWrite does not apply validation
+    // Could consider using a for loop and updateOne with upsert
+    // However, this would seriously impact performance
+    const result = await Entry.collection.bulkWrite(bulkOps)
+    res.send(result)
+  } catch (error: any) {
+    console.log(`[ v1 >  update_entries] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
+  }
 }
 
 export const delete_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  try {
+    const { _id } = req.params
 
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+    if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  const result = await Entry.findByIdAndDelete(_id)
-  res.send(result)
+    const result = await Entry.findByIdAndDelete(_id)
+    res.send(result)
+  } catch (error: any) {
+    console.log(`[ v1 > delete_entry] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
+  }
 }
 
 export const delete_entries = async (req: Request, res: Response) => {
-  const entryIds = req.query.ids as string[]
+  try {
+    const entryIds = req.query.ids as string[]
 
-  if (!entryIds) throw createHttpError(400, `_id not provided`)
+    if (!entryIds) throw createHttpError(400, `_id not provided`)
 
-  const bulkOps = entryIds.map((_id) => ({
-    deleteOne: {
-      filter: {
-        _id: mongoose.Types.ObjectId(_id),
+    const bulkOps = entryIds.map((_id) => ({
+      deleteOne: {
+        filter: {
+          _id: mongoose.Types.ObjectId(_id),
+        },
       },
-    },
-  }))
+    }))
 
-  // Warning: bulkWrite does not apply validation
-  // Could consider using a for loop and updateOne with upsert
-  // However, this would seriously impact performance
-  const result = await Entry.collection.bulkWrite(bulkOps)
-  res.send(result)
+    // Warning: bulkWrite does not apply validation
+    // Could consider using a for loop and updateOne with upsert
+    // However, this would seriously impact performance
+    const result = await Entry.collection.bulkWrite(bulkOps)
+    res.send(result)
+  } catch (error: any) {
+    console.log(`[ v1 > delete_entries] Error:`, error);
+    const status = error.status || 500;
+    const message = error.message || "Internal Server Error";
+    res.status(status).send({ error: message });
+  }
 }
 
 export const get_entries_of_group = async (req: Request, res: Response) => {
@@ -269,6 +333,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     users = items
     total_of_users = count
   } catch (error: any) {
+    console.log(`[ v1 >  get_entries_of_group > get group members] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query group members" } = response
     throw createHttpError(status, data)
@@ -366,6 +431,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     users = data
     total_of_users = Number(workplaceResHeader["x-total"])
   } catch (error: any) {
+    console.log(`[ v1 > get_entries_of_workplace > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
