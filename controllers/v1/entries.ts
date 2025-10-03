@@ -57,7 +57,7 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 }
 
 export const create_entry = async (req: Request, res: Response) => {
-  const {
+  let {
     date,
     type = "有休",
     am = true,
@@ -79,7 +79,14 @@ export const create_entry = async (req: Request, res: Response) => {
       identifier, req.headers.authorization)
   }
 
-  let userFields = resolveUserEntryFields(current_user);
+  // --- Normalize date ---
+  // Always convert to a real Date object at UTC midnight
+  date = new Date(date)
+  if (isNaN(date.getTime())) {
+    throw createHttpError(400, `Invalid date provided: ${req.body.date}`)
+  }
+  date.setUTCHours(0, 0, 0, 0)
+  const userFields = resolveUserEntryFields(current_user)
   const entry_properties = {
     ...userFields,
     date,
@@ -169,8 +176,7 @@ export const update_entry = async (req: Request, res: Response) => {
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  const result = await Entry.updateOne({ _id }, req.body)
-
+  const result = await Entry.findByIdAndUpdate(_id, req.body, { new: true })
   res.send(result)
 }
 
@@ -213,7 +219,7 @@ export const delete_entry = async (req: Request, res: Response) => {
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  const result = await Entry.deleteOne({ _id })
+  const result = await Entry.findByIdAndDelete(_id)
   res.send(result)
 }
 
