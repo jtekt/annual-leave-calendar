@@ -29,6 +29,7 @@ const mongodb_options = {
   useNewUrlParser: true,
 }
 
+mongoose.set('useFindAndModify', false)
 mongoose.set("useCreateIndex", true)
 
 export const connect = () => {
