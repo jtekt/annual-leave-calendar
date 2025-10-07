@@ -47,9 +47,9 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 
     res.send({ entries, allocations })
   } catch (error: any) {
-    console.log(`[ v3 >  get_entries_of_user] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  get_entries_of_user] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -105,9 +105,9 @@ export const create_entry = async (req: Request, res: Response) => {
 
     res.send(entry);
   } catch (error: any) {
-    console.log(`[ v3 >  create_entry] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  create_entry] Error:`, message);
     res.status(status).send({ error: message });
   }
 };
@@ -123,9 +123,9 @@ export const create_entries = async (req: Request, res: Response) => {
     const result = await Entry.insertMany(entries)
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v3 >  create_entries] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  create_entries] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -175,9 +175,9 @@ export const get_all_entries = async (req: Request, res: Response) => {
 
     res.send(response)
   } catch (error: any) {
-    console.log(`[ v3 >  get_all_entries] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  get_all_entries] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -411,9 +411,9 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
     res.send(response)
   } catch (error: any) {
-    console.log(`[ v3 >  get_entries_of_workplace] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  get_entries_of_workplace] Error:`, message);
     res.status(status).send({ error: message });
   }
 }

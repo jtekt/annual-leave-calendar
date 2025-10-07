@@ -48,9 +48,9 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 
     res.send({ entries, allocations })
   } catch (error: any) {
-    console.log(`[ v2 >  get_entries_of_user] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v2 >  get_entries_of_user] Error:`, message);
     res.status(status).send({ error: message });
   }
 }

@@ -35,10 +35,10 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
     res.send(allocations)
   } catch (error: any) {
     let user = getUserId(current_user);
-    console.log(`${user} : [v1 >  get_allocations_of_user > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`${user} : [v1 >  get_allocations_of_user > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -109,10 +109,10 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
     res.send(response)
   } catch (error: any) {
-    console.log(`[ v1 > get_allocations_of_group > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`[ v1 > get_allocations_of_group > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -137,10 +137,10 @@ export const get_user_allocations_by_year = async (
 
     return response
   } catch (error: any) {
-    console.log(`[ v1 > get_user_allocations_by_year > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`[ v1 > get_user_allocations_by_year > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -177,10 +177,10 @@ export const get_user_array_allocations_by_year = async (
 
     return response
   } catch (error: any) {
-    console.log(`[ v1 > get_user_array_allocations_by_year > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`[ v1 > get_user_array_allocations_by_year > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -225,10 +225,10 @@ export const create_allocation = async (req: Request, res: Response) => {
     res.send(allocation)
   } catch (error: any) {
     let user = getUserId(current_user);
-    console.log(`${user} : [v1 > create_allocation > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`${user} : [v1 > create_allocation > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -240,10 +240,12 @@ export const get_single_allocation = async (req: Request, res: Response) => {
     const allocation = await Allocation.findById(_id)
     res.send(allocation)
   } catch (error: any) {
-    console.log(`[ v1 > get_single_allocation > ] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`${user} : [ v1 > get_single_allocation > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -279,10 +281,12 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 
     res.send(response)
   } catch (error: any) {
-    console.log(`[ v1 > get_all_allocations > ] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`${user} : [ v1 > get_all_allocations > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -297,10 +301,12 @@ export const update_allocation = async (req: Request, res: Response) => {
 
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v1 > update_allocation > ] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`${user} : [ v1 > update_allocation > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -315,10 +321,12 @@ export const delete_allocation = async (req: Request, res: Response) => {
 
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v1 > delete_allocation > ] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`${user} : [ v1 > delete_allocation > ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
