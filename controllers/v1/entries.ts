@@ -57,9 +57,9 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     res.send(entries)
   } catch (error: any) {
     let user = getUserId(current_user);
-    console.log(`${user} : [v1 > get_entries_of_user] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [v1 > get_entries_of_user] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -116,13 +116,12 @@ export const create_entry = async (req: Request, res: Response) => {
 
     const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
 
-    console.log(entry)
     res.send(entry)
   } catch (error: any) {
     let user = getUserId(current_user);
-    console.log(`${user} : [v1 >  create_entry] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [v1 >  create_entry] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -139,9 +138,11 @@ export const create_entries = async (req: Request, res: Response) => {
     const result = await Entry.insertMany(entries)
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v1 >  create_entries] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [ v1 >  create_entries] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -156,9 +157,11 @@ export const get_single_entry = async (req: Request, res: Response) => {
 
     res.send(entry)
   } catch (error: any) {
-    console.log(`[ v1 >  get_single_entry] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [ v1 >  get_single_entry] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -202,9 +205,11 @@ export const get_all_entries = async (req: Request, res: Response) => {
 
     res.send(response)
   } catch (error: any) {
-    console.log(`[ v1 >  get_all_entries] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [ v1 >  get_all_entries] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -218,9 +223,11 @@ export const update_entry = async (req: Request, res: Response) => {
     const result = await Entry.findByIdAndUpdate(_id, req.body, { new: true })
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v1 >  update_entry] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [ v1 >  update_entry] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -259,9 +266,11 @@ export const update_entries = async (req: Request, res: Response) => {
     const result = await Entry.collection.bulkWrite(bulkOps)
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v1 >  update_entries] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [ v1 >  update_entries] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -275,9 +284,11 @@ export const delete_entry = async (req: Request, res: Response) => {
     const result = await Entry.findByIdAndDelete(_id)
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v1 > delete_entry] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} [ v1 > delete_entry] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -302,9 +313,11 @@ export const delete_entries = async (req: Request, res: Response) => {
     const result = await Entry.collection.bulkWrite(bulkOps)
     res.send(result)
   } catch (error: any) {
-    console.log(`[ v1 > delete_entries] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`${user} : [ v1 > delete_entries] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -335,9 +348,11 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     users = items
     total_of_users = count
   } catch (error: any) {
-    console.log(`[ v1 >  get_entries_of_group > get group members] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query group members" } = response
+    console.log(`${user} : [ v1 >  get_entries_of_group > get group members] Error:`, data);
     throw createHttpError(status, data)
   }
 
@@ -433,10 +448,12 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     users = data
     total_of_users = Number(workplaceResHeader["x-total"])
   } catch (error: any) {
-    console.log(`[ v1 > get_entries_of_workplace > ] Error:`, error);
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
+    console.log(`${user}: [ v1 > get_entries_of_workplace > ] Error:`, data);
     throw createHttpError(status, data)
   }
 

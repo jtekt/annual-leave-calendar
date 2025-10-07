@@ -25,9 +25,9 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
 
     res.send(allocations)
   } catch (error: any) {
-    console.log(`[ v3 >  get_allocations_of_user] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  get_allocations_of_user] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -207,9 +207,9 @@ export const create_allocation = async (req: Request, res: Response) => {
 
     res.send(allocation)
   } catch (error: any) {
-    console.log(`[ v3 >  create_allocation] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  create_allocation] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
@@ -252,9 +252,9 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 
     res.send(response)
   } catch (error: any) {
-    console.log(`[ v3 >  get_all_allocations] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
+    console.log(`[ v3 >  get_all_allocations] Error:`, message);
     res.status(status).send({ error: message });
   }
 }
