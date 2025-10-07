@@ -34,7 +34,8 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
 
     res.send(allocations)
   } catch (error: any) {
-    console.log(`[ v1 > get_allocations_of_user > ] Error:`, error);
+    let user = getUserId(current_user);
+    console.log(`${user} : [v1 >  get_allocations_of_user > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
@@ -223,7 +224,8 @@ export const create_allocation = async (req: Request, res: Response) => {
 
     res.send(allocation)
   } catch (error: any) {
-    console.log(`[ v1 > create_allocation > ] Error:`, error);
+    let user = getUserId(current_user);
+    console.log(`${user} : [v1 > create_allocation > ] Error:`, error);
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response

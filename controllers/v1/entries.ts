@@ -56,7 +56,8 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 
     res.send(entries)
   } catch (error: any) {
-    console.log(`[ v1 >  get_entries_of_user] Error:`, error);
+    let user = getUserId(current_user);
+    console.log(`${user} : [v1 > get_entries_of_user] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
     res.status(status).send({ error: message });
@@ -118,7 +119,8 @@ export const create_entry = async (req: Request, res: Response) => {
     console.log(entry)
     res.send(entry)
   } catch (error: any) {
-    console.log(`[ v1 >  create_entry] Error:`, error);
+    let user = getUserId(current_user);
+    console.log(`${user} : [v1 >  create_entry] Error:`, error);
     const status = error.status || 500;
     const message = error.message || "Internal Server Error";
     res.status(status).send({ error: message });
