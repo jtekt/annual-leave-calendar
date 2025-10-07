@@ -15,33 +15,40 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
 
-  try {
-    if (!isSelf) {
-      current_user = await fetchUserData(
-        identifier, req.headers.authorization)
+  if (!isSelf) {
+    try {
+      current_user = await fetchUserData(identifier, req.headers.authorization)
+    } catch (error: any) {
+      let user = getUserId(current_user)
+      const { response = {} } = error
+      const { status = 500, data = "Failed to create new entry" } = response
+      console.error(`${user} : [v2 > get_entries_of_user > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
+      throw createHttpError(status, data)
     }
-    const {
-      year = new Date().getFullYear(),
-      start_date,
-      end_date,
-    } = req.query as any
+  }
+  const {
+    year = new Date().getFullYear(),
+    start_date,
+    end_date,
+  } = req.query as any
 
-    const start_of_date = start_date
-      ? new Date(start_date)
-      : new Date(`${year}/01/01`)
-    const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
+  const start_of_date = start_date
+    ? new Date(start_date)
+    : new Date(`${year}/01/01`)
+  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
 
-    let identifierQuery = resolveUserQuery({ identifier, user: current_user })
-    const query = {
-      $and: [
-        identifierQuery,
-        {
-          date: { $gte: start_of_date, $lte: end_of_date },
-        },
-      ],
-    };
+  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
+  const query = {
+    $and: [
+      identifierQuery,
+      {
+        date: { $gte: start_of_date, $lte: end_of_date },
+      },
+    ],
+  };
 
+  try {
     const entries = await Entry.find(query).sort("date")
 
     const allocations = await get_user_allocations_by_year(year, current_user._id)
