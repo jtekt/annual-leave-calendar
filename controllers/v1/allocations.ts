@@ -20,16 +20,23 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
 
-  try {
-    if (!isSelf) {
-      current_user = await fetchUserData(
-        identifier, req.headers.authorization)
+  if (!isSelf) {
+    try {
+      current_user = await fetchUserData(identifier, req.headers.authorization)
+    } catch (error: any) {
+      let user = getUserId(current_user)
+      const { response = {} } = error
+      const { status = 500, data = "Failed to query allocations of user" } = response
+      console.error(`${user} : [v1 > get_allocations_of_user > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
+      throw createHttpError(status, data)
     }
-    const { year } = req.query as any
+  }
+  const { year } = req.query as any
 
-    const query: any = resolveUserQuery({ identifier, user: current_user });
-    if (year) query.year = year
+  const query: any = resolveUserQuery({ identifier, user: current_user });
+  if (year) query.year = year
 
+  try {
     const allocations = await Allocation.find(query).sort("year")
 
     res.send(allocations)
@@ -38,7 +45,7 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
-    console.log(`${user} : [v1 >  get_allocations_of_user > ] Error:`, data);
+    console.log(`${user} : [v1 >  get_allocations_of_user ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -109,10 +116,12 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
     res.send(response)
   } catch (error: any) {
+    let current_user = get_current_user(res)
+    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
-    console.log(`[ v1 > get_allocations_of_group > ] Error:`, data);
+    console.log(`${user} : [ v1 > get_allocations_of_group : ${group_id} ] Error:`, data);
     throw createHttpError(status, data)
   }
 }
@@ -199,8 +208,15 @@ export const create_allocation = async (req: Request, res: Response) => {
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
   if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
+    try {
+      current_user = await fetchUserData(identifier, req.headers.authorization)
+    } catch (error: any) {
+      let user = getUserId(current_user)
+      const { response = {} } = error
+      const { status = 500, data = "Failed to create new allocation" } = response
+      console.error(`${user} : [v1 > create_allocation > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
+      throw createHttpError(status, data)
+    }
   }
 
   let userFields = resolveUserEntryFields(res.locals.user);

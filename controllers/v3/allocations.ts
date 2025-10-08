@@ -56,9 +56,9 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
     users = items
     total_of_users = count
   } catch (error: any) {
-    console.log("v3 > [get_allocations_of_group] : ", error)
     const { response = {} } = error
-    const { status = 500, data = "Failed to query group members" } = response
+    const { status = 500, data = "Failed to query allocations of group" } = response
+    console.log(`v3 > [get_allocations_of_group : ${group_id}] : `, data)
     throw createHttpError(status, data)
   }
 

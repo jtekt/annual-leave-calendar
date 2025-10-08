@@ -52,16 +52,21 @@ export const collectByKeys = <T>(
 
 export const fetchUserData = async (user_id: string, authorization?: string) => {
     try {
-        const res = await axios.get(`${USER_MANAGER_API_URL}/v3/users/${user_id}`, {
-            headers: {
-                Authorization: authorization || "",
-            }
-        })
+        const headers: Record<string, string> = {};
+        if (authorization?.trim()) headers.Authorization = authorization;
+        const res = await axios.get(`${USER_MANAGER_API_URL}/v3/users/${user_id}`, { headers })
         return res.data
     } catch (error: any) {
-        console.error(`[USER_MANAGER_API] Failed to fetch ${user_id}:`, error?.message || error)
-        throw error?.response?.status === 403
-            ? createHttpError(400, `Unauthorized to access USER_MANAGER_API`)
-            : createHttpError(400, `Failed to fetch from USER_MANAGER_API`)
+        const status = error?.response?.status ?? 500;
+        const code = error?.code;
+        if (status === 403 || status === 401) {
+            throw createHttpError(403, "Unauthorized to access USER_MANAGER_API");
+        } else if (status === 404) {
+            throw createHttpError(404, "User not found in USER_MANAGER_API");
+        } else if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
+            throw createHttpError(502, "USER_MANAGER_API is unreachable");
+        } else {
+            throw createHttpError(400, "Failed to fetch from USER_MANAGER_API");
+        }
     }
 }

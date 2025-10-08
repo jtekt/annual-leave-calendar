@@ -25,33 +25,40 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
 
-  try {
-    if (!isSelf) {
-      current_user = await fetchUserData(
-        identifier, req.headers.authorization)
+  if (!isSelf) {
+    try {
+      current_user = await fetchUserData(identifier, req.headers.authorization)
+    } catch (error: any) {
+      let user = getUserId(current_user)
+      const { response = {} } = error
+      const { status = 500, data = "Failed to query entries of user" } = response
+      console.error(`${user} : [v1 > get_entries_of_user > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
+      throw createHttpError(status, data)
     }
+  }
 
-    const {
-      year = new Date().getFullYear(),
-      start_date,
-      end_date,
-    } = req.query as any
+  const {
+    year = new Date().getFullYear(),
+    start_date,
+    end_date,
+  } = req.query as any
 
-    const start_of_date = start_date
-      ? new Date(start_date)
-      : new Date(`${year}/01/01`)
-    const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
+  const start_of_date = start_date
+    ? new Date(start_date)
+    : new Date(`${year}/01/01`)
+  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-    let identifierQuery = resolveUserQuery({ identifier, user: current_user })
-    const query = {
-      $and: [
-        identifierQuery,
-        {
-          date: { $gte: start_of_date, $lte: end_of_date },
-        },
-      ],
-    };
+  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
+  const query = {
+    $and: [
+      identifierQuery,
+      {
+        date: { $gte: start_of_date, $lte: end_of_date },
+      },
+    ],
+  };
 
+  try {
     const entries = await Entry.find(query).sort("date")
 
     res.send(entries)
@@ -82,38 +89,45 @@ export const create_entry = async (req: Request, res: Response) => {
 
   if (!date) throw createHttpError(400, `Date not provided`)
 
+  if (!isSelf) {
+    try {
+      current_user = await fetchUserData(identifier, req.headers.authorization)
+    } catch (error: any) {
+      let user = getUserId(current_user)
+      const { response = {} } = error
+      const { status = 500, data = "Failed to create new entry" } = response
+      console.error(`${user} : [v1 > create_entry > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
+      throw createHttpError(status, data)
+    }
+  }
+
+  // --- Normalize date ---
+  // Always convert to a real Date object at UTC midnight
+  date = new Date(date)
+  if (isNaN(date.getTime())) {
+    throw createHttpError(400, `Invalid date provided: ${req.body.date}`)
+  }
+  date.setUTCHours(0, 0, 0, 0)
+  const userFields = resolveUserEntryFields(current_user)
+  const entry_properties = {
+    ...userFields,
+    date,
+    type,
+    am,
+    pm,
+    taken,
+    refresh,
+    plus_one,
+    reserve,
+  }
+
+  const filter = {
+    date,
+    ...userFields
+  }
+  const options = { new: true, upsert: true }
+
   try {
-    if (!isSelf) {
-      current_user = await fetchUserData(
-        identifier, req.headers.authorization)
-    }
-
-    // --- Normalize date ---
-    // Always convert to a real Date object at UTC midnight
-    date = new Date(date)
-    if (isNaN(date.getTime())) {
-      throw createHttpError(400, `Invalid date provided: ${req.body.date}`)
-    }
-    date.setUTCHours(0, 0, 0, 0)
-    const userFields = resolveUserEntryFields(current_user)
-    const entry_properties = {
-      ...userFields,
-      date,
-      type,
-      am,
-      pm,
-      taken,
-      refresh,
-      plus_one,
-      reserve,
-    }
-
-    const filter = {
-      date,
-      ...userFields
-    }
-    const options = { new: true, upsert: true }
-
     const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
 
     res.send(entry)
@@ -351,8 +365,8 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     let current_user = get_current_user(res)
     let user = getUserId(current_user)
     const { response = {} } = error
-    const { status = 500, data = "Failed to query group members" } = response
-    console.log(`${user} : [ v1 >  get_entries_of_group > get group members] Error:`, data);
+    const { status = 500, data = "Failed to query entries of group" } = response
+    console.log(`${user} : [ v1 >  get_entries_of_group : ${group_id} > ] Error:`, data);
     throw createHttpError(status, data)
   }
 
