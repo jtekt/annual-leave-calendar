@@ -121,14 +121,16 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve,
   }
 
+  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
+
   const filter = {
     date,
-    ...userFields
+    ...identifierQuery
   }
   const options = { new: true, upsert: true }
 
   try {
-    const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
+    let entry = await Entry.findOneAndUpdate(filter, entry_properties, options);
 
     res.send(entry)
   } catch (error: any) {

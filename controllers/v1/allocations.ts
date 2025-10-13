@@ -220,6 +220,7 @@ export const create_allocation = async (req: Request, res: Response) => {
   }
 
   let userFields = resolveUserEntryFields(res.locals.user);
+  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
 
   const allocation_properties = {
     year,
@@ -228,7 +229,7 @@ export const create_allocation = async (req: Request, res: Response) => {
     reserve,
   }
 
-  const filter = { year, ...userFields }
+  const filter = { year, ...identifierQuery }
   const options = { new: true, upsert: true }
 
   try {
