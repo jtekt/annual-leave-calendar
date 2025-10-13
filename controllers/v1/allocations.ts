@@ -21,33 +21,17 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   const isSelf = identifier === "self" || identifier === current_user._id
 
   if (!isSelf) {
-    try {
-      current_user = await fetchUserData(identifier, req.headers.authorization)
-    } catch (error: any) {
-      let user = getUserId(current_user)
-      const { response = {} } = error
-      const { status = 500, data = "Failed to query allocations of user" } = response
-      console.error(`${user} : [v1 > get_allocations_of_user > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
-      throw createHttpError(status, data)
-    }
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
   }
   const { year } = req.query as any
 
   const query: any = resolveUserQuery({ identifier, user: current_user });
   if (year) query.year = year
 
-  try {
-    const allocations = await Allocation.find(query).sort("year")
+  const allocations = await Allocation.find(query).sort("year")
 
-    res.send(allocations)
-  } catch (error: any) {
-    let user = getUserId(current_user);
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`${user} : [v1 >  get_allocations_of_user ] Error:`, data);
-    throw createHttpError(status, data)
-  }
+  res.send(allocations)
 }
 
 export const get_allocations_of_group = async (req: Request, res: Response) => {
@@ -69,61 +53,51 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
     start_index: skip,
   }
 
-  try {
-    const { data } = await axios.get(url, { headers, params })
-    const { items, count } = data
-    users = items
-    total_of_users = count
+  const { data } = await axios.get(url, { headers, params })
+  const { items, count } = data
+  users = items
+  total_of_users = count
 
-    const user_ids = users.map((user: IUser) => ({
-      user_id: getUserId(user),
-    }))
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserId(user),
+  }))
 
-    if (!user_ids.length)
-      throw createHttpError(404, `Group ${group_id} appears to be empty`)
+  if (!user_ids.length)
+    throw createHttpError(404, `Group ${group_id} appears to be empty`)
 
-    const result_allocations = await get_user_array_allocations_by_year(
-      year,
-      user_ids
-    )
+  const result_allocations = await get_user_array_allocations_by_year(
+    year,
+    user_ids
+  )
 
-    const allocations_mapping = result_allocations.allocations.reduce(
-      (prev: any, allocation: IAllocation) => {
-        const { user_id } = allocation
-        if (!prev[user_id]) prev[user_id] = []
-        prev[user_id].push(allocation)
-        return prev
-      },
-      {}
-    )
+  const allocations_mapping = result_allocations.allocations.reduce(
+    (prev: any, allocation: IAllocation) => {
+      const { user_id } = allocation
+      if (!prev[user_id]) prev[user_id] = []
+      prev[user_id].push(allocation)
+      return prev
+    },
+    {}
+  )
 
-    const output = users.map((user: IGroup) => {
-      const user_id = getUserId(user)
-      if (!user_id) throw "User has no ID"
-      const allocatons = allocations_mapping[user_id] || []
+  const output = users.map((user: IGroup) => {
+    const user_id = getUserId(user)
+    if (!user_id) throw "User has no ID"
+    const allocatons = allocations_mapping[user_id] || []
 
-      return { user, allocatons }
-    })
+    return { user, allocatons }
+  })
 
-    const response = {
-      year,
-      user_ids,
-      limit,
-      skip,
-      total: total_of_users,
-      items: output,
-    }
-
-    res.send(response)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`${user} : [ v1 > get_allocations_of_group : ${group_id} ] Error:`, data);
-    throw createHttpError(status, data)
+  const response = {
+    year,
+    user_ids,
+    limit,
+    skip,
+    total: total_of_users,
+    items: output,
   }
+
+  res.send(response)
 }
 
 export const get_user_allocations_by_year = async (
@@ -137,21 +111,13 @@ export const get_user_allocations_by_year = async (
   const skip = 0
   const query: any = { year, user_id }
 
-  try {
-    const allocations = await Allocation.findOne(query)
-      .skip(Number(skip))
-      .limit(Math.max(Number(limit), 0))
+  const allocations = await Allocation.findOne(query)
+    .skip(Number(skip))
+    .limit(Math.max(Number(limit), 0))
 
-    const response = allocations
+  const response = allocations
 
-    return response
-  } catch (error: any) {
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`[ v1 > get_user_allocations_by_year > ] Error:`, data);
-    throw createHttpError(status, data)
-  }
+  return response
 }
 
 export const get_user_array_allocations_by_year = async (
@@ -168,30 +134,22 @@ export const get_user_array_allocations_by_year = async (
   const skip = 0
   const query: any = { year, $or: user_ids }
 
-  try {
-    const allocations = await Allocation.find(query)
-      .skip(Number(skip))
-      .limit(Math.max(Number(limit), 0))
+  const allocations = await Allocation.find(query)
+    .skip(Number(skip))
+    .limit(Math.max(Number(limit), 0))
 
-    const total = await Allocation.countDocuments(query)
+  const total = await Allocation.countDocuments(query)
 
-    const response = {
-      year,
-      user_ids,
-      limit,
-      skip,
-      total,
-      allocations,
-    }
-
-    return response
-  } catch (error: any) {
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`[ v1 > get_user_array_allocations_by_year > ] Error:`, data);
-    throw createHttpError(status, data)
+  const response = {
+    year,
+    user_ids,
+    limit,
+    skip,
+    total,
+    allocations,
   }
+
+  return response
 }
 
 export const create_allocation = async (req: Request, res: Response) => {
@@ -208,15 +166,8 @@ export const create_allocation = async (req: Request, res: Response) => {
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
   if (!isSelf) {
-    try {
-      current_user = await fetchUserData(identifier, req.headers.authorization)
-    } catch (error: any) {
-      let user = getUserId(current_user)
-      const { response = {} } = error
-      const { status = 500, data = "Failed to create new allocation" } = response
-      console.error(`${user} : [v1 > create_allocation > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
-      throw createHttpError(status, data)
-    }
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
   }
 
   let userFields = resolveUserEntryFields(res.locals.user);
@@ -232,39 +183,21 @@ export const create_allocation = async (req: Request, res: Response) => {
   const filter = { year, ...identifierQuery }
   const options = { new: true, upsert: true }
 
-  try {
-    const allocation = await Allocation.findOneAndUpdate(
-      filter,
-      allocation_properties,
-      options
-    )
+  const allocation = await Allocation.findOneAndUpdate(
+    filter,
+    allocation_properties,
+    options
+  )
 
-    res.send(allocation)
-  } catch (error: any) {
-    let user = getUserId(current_user);
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`${user} : [v1 > create_allocation > ] Error:`, data);
-    throw createHttpError(status, data)
-  }
+  res.send(allocation)
 }
 
 export const get_single_allocation = async (req: Request, res: Response) => {
   const { _id } = req.params
   if (!_id) throw createHttpError(400, `ID is not provided`)
-  try {
-    const allocation = await Allocation.findById(_id)
-    res.send(allocation)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`${user} : [ v1 > get_single_allocation > ] Error:`, data);
-    throw createHttpError(status, data)
-  }
+
+  const allocation = await Allocation.findById(_id)
+  res.send(allocation)
 }
 
 export const get_all_allocations = async (req: Request, res: Response) => {
@@ -279,33 +212,23 @@ export const get_all_allocations = async (req: Request, res: Response) => {
   if (year) query.year = year
   if (user_id) query.user_id = user_id
 
-  try {
-    const allocations = await Allocation.find(query)
-      .sort({ user_id, year })
-      .skip(Number(skip))
-      .limit(Math.max(Number(limit), 0))
+  const allocations = await Allocation.find(query)
+    .sort({ user_id, year })
+    .skip(Number(skip))
+    .limit(Math.max(Number(limit), 0))
 
-    const total = await Allocation.countDocuments(query)
+  const total = await Allocation.countDocuments(query)
 
-    const response = {
-      year,
-      user_id,
-      limit,
-      skip,
-      total,
-      allocations,
-    }
-
-    res.send(response)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`${user} : [ v1 > get_all_allocations > ] Error:`, data);
-    throw createHttpError(status, data)
+  const response = {
+    year,
+    user_id,
+    limit,
+    skip,
+    total,
+    allocations,
   }
+
+  res.send(response)
 }
 
 export const update_allocation = async (req: Request, res: Response) => {
@@ -313,19 +236,9 @@ export const update_allocation = async (req: Request, res: Response) => {
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  try {
-    const result = await Allocation.findByIdAndUpdate(_id, req.body)
+  const result = await Allocation.updateOne({ _id }, req.body)
 
-    res.send(result)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`${user} : [ v1 > update_allocation > ] Error:`, data);
-    throw createHttpError(status, data)
-  }
+  res.send(result)
 }
 
 export const delete_allocation = async (req: Request, res: Response) => {
@@ -333,17 +246,7 @@ export const delete_allocation = async (req: Request, res: Response) => {
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  try {
-    const result = await Allocation.findByIdAndDelete(_id)
+  const result = await Allocation.deleteOne({ _id })
 
-    res.send(result)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    console.log(`${user} : [ v1 > delete_allocation > ] Error:`, data);
-    throw createHttpError(status, data)
-  }
+  res.send(result)
 }

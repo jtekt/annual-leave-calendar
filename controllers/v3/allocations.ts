@@ -17,19 +17,13 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   }
 
   const { year } = req.query as any
+
   const query: any = resolveUserQuery({ identifier, user: res.locals.user });
   if (year) query.year = year;
 
-  try {
-    const allocations = await Allocation.find(query).sort("year")
+  const allocations = await Allocation.find(query).sort("year")
 
-    res.send(allocations)
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  get_allocations_of_user] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send(allocations)
 }
 
 export const get_allocations_of_group = async (req: Request, res: Response) => {
@@ -57,8 +51,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
     total_of_users = count
   } catch (error: any) {
     const { response = {} } = error
-    const { status = 500, data = "Failed to query allocations of group" } = response
-    console.log(`v3 > [get_allocations_of_group : ${group_id}] : `, data)
+    const { status = 500, data = "Failed to query group members" } = response
     throw createHttpError(status, data)
   }
 
@@ -195,23 +188,21 @@ export const create_allocation = async (req: Request, res: Response) => {
     reserve,
   }
 
-  const filter = { year, ...userFields }
+  let identifierQuery = resolveUserQuery({ identifier, user: res.locals.user });
+
+  const filter = {
+    year,
+    ...identifierQuery
+  }
   const options = { new: true, upsert: true }
 
-  try {
-    const allocation = await Allocation.findOneAndUpdate(
-      filter,
-      allocation_properties,
-      options
-    )
+  const allocation = await Allocation.findOneAndUpdate(
+    filter,
+    allocation_properties,
+    options
+  )
 
-    res.send(allocation)
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  create_allocation] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send(allocation)
 }
 
 export const get_all_allocations = async (req: Request, res: Response) => {
@@ -234,27 +225,20 @@ export const get_all_allocations = async (req: Request, res: Response) => {
     ]);
   }
 
-  try {
-    const allocations = await Allocation.find(query)
-      .sort("year")
-      .skip(Number(skip))
-      .limit(Math.max(Number(limit), 0))
+  const allocations = await Allocation.find(query)
+    .sort("year")
+    .skip(Number(skip))
+    .limit(Math.max(Number(limit), 0))
 
-    const total = await Allocation.countDocuments(query)
+  const total = await Allocation.countDocuments(query)
 
-    const response = {
-      year,
-      limit,
-      skip,
-      total,
-      allocations,
-    }
-
-    res.send(response)
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  get_all_allocations] Error:`, message);
-    res.status(status).send({ error: message });
+  const response = {
+    year,
+    limit,
+    skip,
+    total,
+    allocations,
   }
+
+  res.send(response)
 }
