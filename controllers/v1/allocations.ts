@@ -229,14 +229,36 @@ export const create_allocation = async (req: Request, res: Response) => {
   }
 
   const filter = { year, ...userFields }
-  const options = { new: true, upsert: true }
 
   try {
-    const allocation = await Allocation.findOneAndUpdate(
-      filter,
-      allocation_properties,
-      options
-    )
+    let allocation = await Allocation.findOneAndUpdate(filter, allocation_properties, {
+      new: true,
+      upsert: false, // avoid accidental duplicate insertion
+    });
+
+    // if not found and user has OIDC, try legacy fallback
+    if (!allocation && userFields.oidc_user_identifier) {
+      const legacyFilter = { year, user_id: current_user._id };
+      allocation = await Allocation.findOneAndUpdate(
+        legacyFilter,
+        allocation_properties,
+        { new: true, upsert: false }
+      );
+    }
+
+    // no recored → safe insert
+    if (!allocation) {
+      allocation = await Allocation.findOneAndUpdate(filter, allocation_properties, {
+        new: true,
+        upsert: true,
+      });
+    }
+
+    // attach OIDC ID if missing on legacy record
+    if (allocation && userFields.oidc_user_identifier && !allocation.oidc_user_identifier) {
+      allocation.oidc_user_identifier = userFields.oidc_user_identifier;
+      await allocation.save();
+    }
 
     res.send(allocation)
   } catch (error: any) {

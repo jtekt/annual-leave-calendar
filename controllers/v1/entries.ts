@@ -121,14 +121,40 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve,
   }
 
-  const filter = {
-    date,
-    ...userFields
-  }
-  const options = { new: true, upsert: true }
-
   try {
-    const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
+    const filter = {
+      date,
+      ...userFields
+    }
+
+    let entry = await Entry.findOneAndUpdate(filter, entry_properties, {
+      new: true,
+      upsert: false, // avoid duplicate key
+    });
+
+    // If not found but user has OIDC, try to match old record
+    if (!entry && userFields.oidc_user_identifier) {
+      const legacyFilter = { date, user_id: current_user._id };
+      entry = await Entry.findOneAndUpdate(
+        legacyFilter,
+        entry_properties,
+        { new: true, upsert: false }
+      );
+    }
+
+    // If still not found, insert new record
+    if (!entry) {
+      entry = await Entry.findOneAndUpdate(filter, entry_properties, {
+        new: true,
+        upsert: true,
+      });
+    }
+
+    // if found a legacy record and it’s missing OIDC, add it
+    if (entry && userFields.oidc_user_identifier && !entry.oidc_user_identifier) {
+      entry.oidc_user_identifier = userFields.oidc_user_identifier;
+      await entry.save();
+    }
 
     res.send(entry)
   } catch (error: any) {
