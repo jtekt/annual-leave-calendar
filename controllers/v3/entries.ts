@@ -39,19 +39,11 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
       },
     ],
   };
+  const entries = await Entry.find(query).sort("date")
 
-  try {
-    const entries = await Entry.find(query).sort("date")
+  const allocations = await get_user_allocations_by_year(year, identifierQuery)
 
-    const allocations = await get_user_allocations_by_year(year, identifierQuery)
-
-    res.send({ entries, allocations })
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  get_entries_of_user] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send({ entries, allocations })
 }
 export const create_entry = async (req: Request, res: Response) => {
   const {
@@ -96,20 +88,17 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve,
   };
 
-  const filter = { date, ...userFields };
+  let identifierQuery = resolveUserQuery({ identifier, user: res.locals.user });
+
+  const filter = {
+    date,
+    ...identifierQuery
+  }
   const options = { new: true, upsert: true };
 
-  try {
+  const entry = await Entry.findOneAndUpdate(filter, entryProperties, options);
 
-    const entry = await Entry.findOneAndUpdate(filter, entryProperties, options);
-
-    res.send(entry);
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  create_entry] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send(entry);
 };
 
 export const create_entries = async (req: Request, res: Response) => {
@@ -119,15 +108,9 @@ export const create_entries = async (req: Request, res: Response) => {
     throw createHttpError(400, `User ID not provided`)
   if (entries.some(({ date }: IEntry) => !date))
     throw createHttpError(400, `User ID not provided`)
-  try {
-    const result = await Entry.insertMany(entries)
-    res.send(result)
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  create_entries] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+
+  const result = await Entry.insertMany(entries)
+  res.send(result)
 }
 
 export const get_all_entries = async (req: Request, res: Response) => {
@@ -157,29 +140,22 @@ export const get_all_entries = async (req: Request, res: Response) => {
     ]);
   }
 
-  try {
-    const entries = await Entry.find(query)
-      .skip(Number(skip))
-      .limit(Math.max(Number(limit), 0))
+  const entries = await Entry.find(query)
+    .skip(Number(skip))
+    .limit(Math.max(Number(limit), 0))
 
-    const total = await Entry.countDocuments(query)
+  const total = await Entry.countDocuments(query)
 
-    const response = {
-      start_of_date,
-      end_of_date,
-      limit,
-      skip,
-      total,
-      entries,
-    }
-
-    res.send(response)
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  get_all_entries] Error:`, message);
-    res.status(status).send({ error: message });
+  const response = {
+    start_of_date,
+    end_of_date,
+    limit,
+    skip,
+    total,
+    entries,
   }
+
+  res.send(response)
 }
 
 export const get_entries_of_group = async (req: Request, res: Response) => {
@@ -357,63 +333,57 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     $or: identifiers,
     date: { $gte: start_of_date, $lte: end_of_date },
   }
-  try {
-    const entries = await Entry.find(query).sort("date")
 
-    const entries_mapping = collectByKeys<IEntry>(
-      entries,
-      (entry) => [entry.user_id, (entry as any).oidc_user_identifier],
-      (acc, entry, key) => {
-        acc[key] = acc[key] || [];
-        acc[key].push(entry);
-      }
-    );
+  const entries = await Entry.find(query).sort("date")
 
-    const result_allocations = await get_user_array_allocations_by_year(
-      year,
-      identifiers
-    )
-
-    const allocations_mapping = collectByKeys<IAllocation>(
-      result_allocations.allocations,
-      (allocation) => [allocation.user_id, (allocation as any).oidc_user_identifier],
-      (acc, allocation, key) => {
-        acc[key] = allocation;
-      }
-    );
-
-    const output = users.map((user: any) => {
-      const keys = [getUserId(user), getOtherUserIdentifier(user)].filter(Boolean);
-      if (!keys.length) throw new Error("User has no user_id or oidc_user_identifier");
-
-      const entries: IEntry[] = Array.from(
-        new Map(
-          keys
-            .flatMap(key => entries_mapping[key] || [])
-            .map(entry => [entry._id.toString(), entry])
-        ).values()
-      );
-      const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
-
-      // FIXME: Two formats?
-      // user.entries = entries
-      return { user, entries, allocations }
-    })
-
-    const response = {
-      start_of_date,
-      end_of_date,
-      limit,
-      skip,
-      total: total_of_users,
-      items: output,
+  const entries_mapping = collectByKeys<IEntry>(
+    entries,
+    (entry) => [entry.user_id, (entry as any).oidc_user_identifier],
+    (acc, entry, key) => {
+      acc[key] = acc[key] || [];
+      acc[key].push(entry);
     }
+  );
 
-    res.send(response)
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v3 >  get_entries_of_workplace] Error:`, message);
-    res.status(status).send({ error: message });
+  const result_allocations = await get_user_array_allocations_by_year(
+    year,
+    identifiers
+  )
+
+  const allocations_mapping = collectByKeys<IAllocation>(
+    result_allocations.allocations,
+    (allocation) => [allocation.user_id, (allocation as any).oidc_user_identifier],
+    (acc, allocation, key) => {
+      acc[key] = allocation;
+    }
+  );
+
+  const output = users.map((user: any) => {
+    const keys = [getUserId(user), getOtherUserIdentifier(user)].filter(Boolean);
+    if (!keys.length) throw new Error("User has no user_id or oidc_user_identifier");
+
+    const entries: IEntry[] = Array.from(
+      new Map(
+        keys
+          .flatMap(key => entries_mapping[key] || [])
+          .map(entry => [entry._id.toString(), entry])
+      ).values()
+    );
+    const allocations = keys.map(key => allocations_mapping[key]).find(Boolean) || null;
+
+    // FIXME: Two formats?
+    // user.entries = entries
+    return { user, entries, allocations }
+  })
+
+  const response = {
+    start_of_date,
+    end_of_date,
+    limit,
+    skip,
+    total: total_of_users,
+    items: output,
   }
+
+  res.send(response)
 }

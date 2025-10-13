@@ -10,7 +10,7 @@ const {
     USER_MANAGER_API_URL } = process.env
 
 export const resolveUserQuery = ({ identifier, user }: { identifier?: string; user?: any }) => {
-    if (identifier === "self" && user) {
+    if (user) {
         const orQuery = [];
 
         const userId = getUserId(user);

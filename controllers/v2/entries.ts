@@ -16,15 +16,8 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   const isSelf = identifier === "self" || identifier === current_user._id
 
   if (!isSelf) {
-    try {
-      current_user = await fetchUserData(identifier, req.headers.authorization)
-    } catch (error: any) {
-      let user = getUserId(current_user)
-      const { response = {} } = error
-      const { status = 500, data = "Failed to create new entry" } = response
-      console.error(`${user} : [v2 > get_entries_of_user > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
-      throw createHttpError(status, data)
-    }
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
   }
   const {
     year = new Date().getFullYear(),
@@ -48,16 +41,10 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     ],
   };
 
-  try {
-    const entries = await Entry.find(query).sort("date")
+  const entries = await Entry.find(query).sort("date")
 
-    const allocations = await get_user_allocations_by_year(year, current_user._id)
+  const allocations = await get_user_allocations_by_year(year, current_user._id)
 
-    res.send({ entries, allocations })
-  } catch (error: any) {
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`[ v2 >  get_entries_of_user] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send({ entries, allocations })
 }
+

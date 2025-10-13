@@ -26,15 +26,8 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   const isSelf = identifier === "self" || identifier === current_user._id
 
   if (!isSelf) {
-    try {
-      current_user = await fetchUserData(identifier, req.headers.authorization)
-    } catch (error: any) {
-      let user = getUserId(current_user)
-      const { response = {} } = error
-      const { status = 500, data = "Failed to query entries of user" } = response
-      console.error(`${user} : [v1 > get_entries_of_user > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
-      throw createHttpError(status, data)
-    }
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
   }
 
   const {
@@ -58,21 +51,13 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     ],
   };
 
-  try {
-    const entries = await Entry.find(query).sort("date")
+  const entries = await Entry.find(query).sort("date")
 
-    res.send(entries)
-  } catch (error: any) {
-    let user = getUserId(current_user);
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [v1 > get_entries_of_user] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send(entries)
 }
 
 export const create_entry = async (req: Request, res: Response) => {
-  let {
+  const {
     date,
     type = "有休",
     am = true,
@@ -90,25 +75,11 @@ export const create_entry = async (req: Request, res: Response) => {
   if (!date) throw createHttpError(400, `Date not provided`)
 
   if (!isSelf) {
-    try {
-      current_user = await fetchUserData(identifier, req.headers.authorization)
-    } catch (error: any) {
-      let user = getUserId(current_user)
-      const { response = {} } = error
-      const { status = 500, data = "Failed to create new entry" } = response
-      console.error(`${user} : [v1 > create_entry > USER_MANAGER_API] Failed to fetch ${identifier}:`, data)
-      throw createHttpError(status, data)
-    }
+    current_user = await fetchUserData(
+      identifier, req.headers.authorization)
   }
 
-  // --- Normalize date ---
-  // Always convert to a real Date object at UTC midnight
-  date = new Date(date)
-  if (isNaN(date.getTime())) {
-    throw createHttpError(400, `Invalid date provided: ${req.body.date}`)
-  }
-  date.setUTCHours(0, 0, 0, 0)
-  const userFields = resolveUserEntryFields(current_user)
+  let userFields = resolveUserEntryFields(current_user);
   const entry_properties = {
     ...userFields,
     date,
@@ -121,23 +92,17 @@ export const create_entry = async (req: Request, res: Response) => {
     reserve,
   }
 
+  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
+
   const filter = {
     date,
-    ...userFields
+    ...identifierQuery
   }
   const options = { new: true, upsert: true }
 
-  try {
-    const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
+  const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
 
-    res.send(entry)
-  } catch (error: any) {
-    let user = getUserId(current_user);
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [v1 >  create_entry] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send(entry)
 }
 
 export const create_entries = async (req: Request, res: Response) => {
@@ -148,17 +113,8 @@ export const create_entries = async (req: Request, res: Response) => {
   if (entries.some(({ date }: IEntry) => !date))
     throw createHttpError(400, `User ID not provided`)
 
-  try {
-    const result = await Entry.insertMany(entries)
-    res.send(result)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [ v1 >  create_entries] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  const result = await Entry.insertMany(entries)
+  res.send(result)
 }
 
 export const get_single_entry = async (req: Request, res: Response) => {
@@ -166,18 +122,9 @@ export const get_single_entry = async (req: Request, res: Response) => {
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
-  try {
-    const entry = await Entry.findById(_id)
+  const entry = await Entry.findById(_id)
 
-    res.send(entry)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [ v1 >  get_single_entry] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  res.send(entry)
 }
 
 export const get_all_entries = async (req: Request, res: Response) => {
@@ -201,139 +148,95 @@ export const get_all_entries = async (req: Request, res: Response) => {
 
   if (user_ids) query.$or = user_ids.map((user_id: string) => ({ user_id }))
 
-  try {
-    const entries = await Entry.find(query)
-      .skip(Number(skip))
-      .limit(Math.max(Number(limit), 0))
+  const entries = await Entry.find(query)
+    .skip(Number(skip))
+    .limit(Math.max(Number(limit), 0))
 
-    const total = await Entry.countDocuments(query)
+  const total = await Entry.countDocuments(query)
 
-    const response = {
-      start_of_date,
-      end_of_date,
-      limit,
-      skip,
-      total,
-      entries,
-    }
-
-    res.send(response)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [ v1 >  get_all_entries] Error:`, message);
-    res.status(status).send({ error: message });
+  const response = {
+    start_of_date,
+    end_of_date,
+    limit,
+    skip,
+    total,
+    entries,
   }
+
+  res.send(response)
 }
 
 export const update_entry = async (req: Request, res: Response) => {
-  try {
-    const { _id } = req.params
+  const { _id } = req.params
 
-    if (!_id) throw createHttpError(400, `ID is not provided`)
+  if (!_id) throw createHttpError(400, `ID is not provided`)
 
-    const result = await Entry.findByIdAndUpdate(_id, req.body, { new: true })
-    res.send(result)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [ v1 >  update_entry] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  const result = await Entry.updateOne({ _id }, req.body)
+
+  res.send(result)
 }
 
 export const update_entries = async (req: Request, res: Response) => {
-  try {
-    const entries = req.body
+  const entries = req.body
 
-    if (entries.some(({ _id }: IEntry) => !_id))
-      throw createHttpError(400, `_id not provided`)
-    if (entries.some(({ type }: IEntry) => !type))
-      throw createHttpError(400, `type not provided`)
+  if (entries.some(({ _id }: IEntry) => !_id))
+    throw createHttpError(400, `_id not provided`)
+  if (entries.some(({ type }: IEntry) => !type))
+    throw createHttpError(400, `type not provided`)
 
-    const bulkOps = entries.map((entry: IEntry) => {
-      const { type } = entry
+  const bulkOps = entries.map((entry: IEntry) => {
+    const { type } = entry
 
-      let opts = {
-        updateOne: {
-          filter: {
-            _id: mongoose.Types.ObjectId(entry._id),
-          },
-          update: {
-            $set: {
-              type: String(type),
-            },
+    let opts = {
+      updateOne: {
+        filter: {
+          _id: mongoose.Types.ObjectId(entry._id),
+        },
+        update: {
+          $set: {
+            type: String(type),
           },
         },
-      }
+      },
+    }
 
-      return opts
-    })
+    return opts
+  })
 
-    // Warning: bulkWrite does not apply validation
-    // Could consider using a for loop and updateOne with upsert
-    // However, this would seriously impact performance
-    const result = await Entry.collection.bulkWrite(bulkOps)
-    res.send(result)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [ v1 >  update_entries] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  // Warning: bulkWrite does not apply validation
+  // Could consider using a for loop and updateOne with upsert
+  // However, this would seriously impact performance
+  const result = await Entry.collection.bulkWrite(bulkOps)
+  res.send(result)
 }
 
 export const delete_entry = async (req: Request, res: Response) => {
-  try {
-    const { _id } = req.params
+  const { _id } = req.params
 
-    if (!_id) throw createHttpError(400, `ID is not provided`)
+  if (!_id) throw createHttpError(400, `ID is not provided`)
 
-    const result = await Entry.findByIdAndDelete(_id)
-    res.send(result)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} [ v1 > delete_entry] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  const result = await Entry.deleteOne({ _id })
+  res.send(result)
 }
 
 export const delete_entries = async (req: Request, res: Response) => {
-  try {
-    const entryIds = req.query.ids as string[]
+  const entryIds = req.query.ids as string[]
 
-    if (!entryIds) throw createHttpError(400, `_id not provided`)
+  if (!entryIds) throw createHttpError(400, `_id not provided`)
 
-    const bulkOps = entryIds.map((_id) => ({
-      deleteOne: {
-        filter: {
-          _id: mongoose.Types.ObjectId(_id),
-        },
+  const bulkOps = entryIds.map((_id) => ({
+    deleteOne: {
+      filter: {
+        _id: mongoose.Types.ObjectId(_id),
       },
-    }))
+    },
+  }))
 
-    // Warning: bulkWrite does not apply validation
-    // Could consider using a for loop and updateOne with upsert
-    // However, this would seriously impact performance
-    const result = await Entry.collection.bulkWrite(bulkOps)
-    res.send(result)
-  } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
-    const status = error.status || 500;
-    const message = error.message || "Internal Server Error";
-    console.log(`${user} : [ v1 > delete_entries] Error:`, message);
-    res.status(status).send({ error: message });
-  }
+  // Warning: bulkWrite does not apply validation
+  // Could consider using a for loop and updateOne with upsert
+  // However, this would seriously impact performance
+  const result = await Entry.collection.bulkWrite(bulkOps)
+  res.send(result)
 }
 
 export const get_entries_of_group = async (req: Request, res: Response) => {
@@ -362,12 +265,9 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     users = items
     total_of_users = count
   } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
     const { response = {} } = error
-    const { status = 500, data = "Failed to query entries of group" } = response
-    console.log(`${user} : [ v1 >  get_entries_of_group : ${group_id} > ] Error:`, data);
-    throw createHttpError(status, data)
+    const { status = 500, data = "Failed to query group members" } = response
+    throw createHttpError(status, `${data}: ${group_id}`)
   }
 
   const start_of_date = start_date
@@ -462,13 +362,10 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     users = data
     total_of_users = Number(workplaceResHeader["x-total"])
   } catch (error: any) {
-    let current_user = get_current_user(res)
-    let user = getUserId(current_user)
     const { response = {} } = error
     const { status = 500, data = "Failed to query workplace members" } =
       response
-    console.log(`${user}: [ v1 > get_entries_of_workplace > ] Error:`, data);
-    throw createHttpError(status, data)
+    throw createHttpError(status, `${data}: ${workplace_id}`)
   }
 
   const start_of_date = start_date

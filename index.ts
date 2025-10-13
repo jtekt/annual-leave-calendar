@@ -15,6 +15,7 @@ import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
 import { TOTAL_HEADER } from "./constants"
+import { getUserId } from "./utils"
 
 const {
   APP_PORT = 80,
@@ -63,8 +64,16 @@ app.listen(APP_PORT, () => {
 })
 
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {
-  console.error(error)
+  // Basic request info
+  const method = req.method;
+  const route = req.route?.path || "unknown route";
+
+  const { user } = res.locals
+  let current_user = getUserId(user)
   let { statusCode = 500, message = error } = error
+  console.error(
+    `${current_user} : [${method} | ${route}] Error: ${message}`
+  );
   if (isNaN(statusCode) || statusCode > 600) statusCode = 500
   res.status(statusCode).send(message)
 })
