@@ -11,6 +11,7 @@ import {
   connected as dbConnected,
 } from "./db"
 import rootRouter from "./routes/index"
+import caldavRouter from "./caldav/index"
 import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
@@ -58,6 +59,11 @@ app.get("/", (req: Request, res: Response) => {
 })
 
 app.use("/", rootRouter)
+
+// CalDAV — must come after express.json() so the text body parser in the
+// caldav router takes precedence for XML/iCal content types.
+app.all("/.well-known/caldav", (_req, res) => res.redirect(301, "/caldav/"))
+app.use("/caldav", caldavRouter)
 
 app.listen(APP_PORT, () => {
   console.log(`[Express] listening on port ${APP_PORT}`)
