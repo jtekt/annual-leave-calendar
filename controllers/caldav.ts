@@ -12,6 +12,8 @@ import {
   detectReportType,
   extractHrefs,
   extractSyncToken,
+  parsePropfindRequest,
+  buildPropstats,
 } from "../caldav"
 
 import Entry from "../models/entry"
@@ -27,17 +29,18 @@ export const handleRoot = (req: Request, res: Response) => {
   const identifier = getOtherUserIdentifier(res.locals.user)
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
 
-  const props = [
-    `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
-    `<D:principal-collection-set><D:href>/caldav/principals/</D:href></D:principal-collection-set>`,
-  ].join("\n")
+  const propMap: Record<string, string> = {
+    "{DAV:}current-user-principal": `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
+    "{DAV:}principal-collection-set": `<D:principal-collection-set><D:href>/caldav/principals/</D:href></D:principal-collection-set>`,
+  }
+
+  const requested = parsePropfindRequest(req.body as string)
+  const propstats = buildPropstats(requested, propMap)
 
   res
     .status(207)
     .setHeader("Content-Type", "application/xml; charset=utf-8")
-    .send(
-      multistatusXml([responseXml("/caldav/", [{ props, status: "200 OK" }])])
-    )
+    .send(multistatusXml([responseXml("/caldav/", propstats)]))
 }
 
 // ─── Principals (/caldav/principals/:user/) ───────────────────────────────────
@@ -48,22 +51,21 @@ export const handlePrincipalPropfind = (req: Request, res: Response) => {
   const principalHref = `/caldav/principals/${encodedUser}/`
   const calHomeHref = `/caldav/calendars/${encodedUser}/`
 
-  const props = [
-    `<D:displayname>${escapeXml(identifier)}</D:displayname>`,
-    `<C:calendar-home-set><D:href>${escapeXml(calHomeHref)}</D:href></C:calendar-home-set>`,
-    `<D:principal-URL><D:href>${escapeXml(principalHref)}</D:href></D:principal-URL>`,
-    `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
-    `<C:calendar-user-address-set><D:href>${escapeXml(principalHref)}</D:href></C:calendar-user-address-set>`,
-  ].join("\n")
+  const propMap: Record<string, string> = {
+    "{DAV:}displayname": `<D:displayname>${escapeXml(identifier)}</D:displayname>`,
+    "{urn:ietf:params:xml:ns:caldav}calendar-home-set": `<C:calendar-home-set><D:href>${escapeXml(calHomeHref)}</D:href></C:calendar-home-set>`,
+    "{DAV:}principal-URL": `<D:principal-URL><D:href>${escapeXml(principalHref)}</D:href></D:principal-URL>`,
+    "{DAV:}current-user-principal": `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
+    "{urn:ietf:params:xml:ns:caldav}calendar-user-address-set": `<C:calendar-user-address-set><D:href>${escapeXml(principalHref)}</D:href></C:calendar-user-address-set>`,
+  }
+
+  const requested = parsePropfindRequest(req.body as string)
+  const propstats = buildPropstats(requested, propMap)
 
   res
     .status(207)
     .setHeader("Content-Type", "application/xml; charset=utf-8")
-    .send(
-      multistatusXml([
-        responseXml(principalHref, [{ props, status: "200 OK" }]),
-      ])
-    )
+    .send(multistatusXml([responseXml(principalHref, propstats)]))
 }
 
 // ─── Calendar collection (/caldav/calendars/:user/) ───────────────────────────
@@ -80,51 +82,54 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
   ).lean()
   const ctag = computeCtag(entries)
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
-
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
-  const calProps = [
-    `<D:resourcetype><D:collection/><C:calendar/></D:resourcetype>`,
-    `<D:displayname>${escapeXml(identifier)} – Leave Calendar</D:displayname>`,
-    `<CS:getctag>${escapeXml(ctag)}</CS:getctag>`,
-    `<D:sync-token>${escapeXml(ctag)}</D:sync-token>`,
-    `<C:supported-calendar-component-set><C:comp name="VEVENT"/></C:supported-calendar-component-set>`,
-    `<C:calendar-description>Leave calendar for ${escapeXml(identifier)}</C:calendar-description>`,
-    `<D:supported-report-set>`,
-    `  <D:supported-report><D:report><C:calendar-multiget/></D:report></D:supported-report>`,
-    `  <D:supported-report><D:report><C:calendar-query/></D:report></D:supported-report>`,
-    `  <D:supported-report><D:report><D:sync-collection/></D:report></D:supported-report>`,
-    `</D:supported-report-set>`,
-    `<D:current-user-privilege-set>`,
-    `  <D:privilege><D:read/></D:privilege>`,
-    `  <D:privilege><D:write/></D:privilege>`,
-    `  <D:privilege><D:write-content/></D:privilege>`,
-    `  <D:privilege><D:write-properties/></D:privilege>`,
-    `  <D:privilege><D:bind/></D:privilege>`,
-    `  <D:privilege><D:unbind/></D:privilege>`,
-    `</D:current-user-privilege-set>`,
-    `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
-    `<D:principal-URL><D:href>${escapeXml(principalHref)}</D:href></D:principal-URL>`,
-  ].join("\n")
 
+  const calPropMap: Record<string, string> = {
+    "{DAV:}resourcetype": `<D:resourcetype><D:collection/><C:calendar/></D:resourcetype>`,
+    "{DAV:}displayname": `<D:displayname>${escapeXml(identifier)} \u2013 Leave Calendar</D:displayname>`,
+    "{http://calendarserver.org/ns/}getctag": `<CS:getctag>${escapeXml(ctag)}</CS:getctag>`,
+    "{DAV:}sync-token": `<D:sync-token>${escapeXml(ctag)}</D:sync-token>`,
+    "{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set": `<C:supported-calendar-component-set><C:comp name="VEVENT"/></C:supported-calendar-component-set>`,
+    "{urn:ietf:params:xml:ns:caldav}calendar-description": `<C:calendar-description>Leave calendar for ${escapeXml(identifier)}</C:calendar-description>`,
+    "{DAV:}supported-report-set": [
+      `<D:supported-report-set>`,
+      `  <D:supported-report><D:report><C:calendar-multiget/></D:report></D:supported-report>`,
+      `  <D:supported-report><D:report><C:calendar-query/></D:report></D:supported-report>`,
+      `  <D:supported-report><D:report><D:sync-collection/></D:report></D:supported-report>`,
+      `</D:supported-report-set>`,
+    ].join("\n"),
+    "{DAV:}current-user-privilege-set": [
+      `<D:current-user-privilege-set>`,
+      `  <D:privilege><D:read/></D:privilege>`,
+      `  <D:privilege><D:write/></D:privilege>`,
+      `  <D:privilege><D:write-content/></D:privilege>`,
+      `  <D:privilege><D:write-properties/></D:privilege>`,
+      `  <D:privilege><D:bind/></D:privilege>`,
+      `  <D:privilege><D:unbind/></D:privilege>`,
+      `</D:current-user-privilege-set>`,
+    ].join("\n"),
+    "{DAV:}current-user-principal": `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
+    "{DAV:}principal-URL": `<D:principal-URL><D:href>${escapeXml(principalHref)}</D:href></D:principal-URL>`,
+  }
+
+  const requested = parsePropfindRequest(req.body as string)
   const responses: string[] = [
-    responseXml(collHref, [{ props: calProps, status: "200 OK" }]),
+    responseXml(collHref, buildPropstats(requested, calPropMap)),
   ]
 
   if (depth === "1") {
+    const eventPropMap: Record<string, string> = {
+      "{DAV:}resourcetype": `<D:resourcetype/>`,
+      "{DAV:}getetag": ``,
+      "{DAV:}getcontenttype": `<D:getcontenttype>text/calendar; charset=utf-8</D:getcontenttype>`,
+    }
     for (const entry of entries) {
       const eventHref = `${collHref}${encodeURIComponent(entryFilename(entry))}`
-      responses.push(
-        responseXml(eventHref, [
-          {
-            props: [
-              `<D:resourcetype/>`,
-              `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
-              `<D:getcontenttype>text/calendar; charset=utf-8</D:getcontenttype>`,
-            ].join("\n"),
-            status: "200 OK",
-          },
-        ])
-      )
+      const entryPropMap = {
+        ...eventPropMap,
+        "{DAV:}getetag": `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
+      }
+      responses.push(responseXml(eventHref, buildPropstats(requested, entryPropMap)))
     }
   }
 
@@ -300,22 +305,17 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const eventHref = `${collHref}${encodeURIComponent(entryFilename(entry))}`
 
+  const propMap: Record<string, string> = {
+    "{DAV:}getetag": `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
+    "{DAV:}getcontenttype": `<D:getcontenttype>text/calendar; charset=utf-8</D:getcontenttype>`,
+    "{DAV:}resourcetype": `<D:resourcetype/>`,
+  }
+
+  const requested = parsePropfindRequest(req.body as string)
   res
     .status(207)
     .setHeader("Content-Type", "application/xml; charset=utf-8")
-    .send(
-      multistatusXml([
-        responseXml(eventHref, [
-          {
-            props: [
-              `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
-              `<D:getcontenttype>text/calendar; charset=utf-8</D:getcontenttype>`,
-            ].join("\n"),
-            status: "200 OK",
-          },
-        ]),
-      ])
-    )
+    .send(multistatusXml([responseXml(eventHref, buildPropstats(requested, propMap))]))
 }
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
