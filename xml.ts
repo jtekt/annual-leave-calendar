@@ -23,9 +23,9 @@ interface Propstat {
 export function multistatusXml(responses: string[]): string {
   return (
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:CS="http://calendarserver.org/ns/">\n` +
+    `<D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:CS="http://calendarserver.org/ns/">\n` +
     responses.join("") +
-    `</multistatus>`
+    `</D:multistatus>`
   )
 }
 
@@ -33,11 +33,11 @@ export function responseXml(href: string, propstats: Propstat[]): string {
   const inner = propstats
     .map(
       (ps) =>
-        `  <propstat>\n    <prop>\n${indentBlock(ps.props, 6)}\n    </prop>\n` +
-        `    <status>HTTP/1.1 ${ps.status}</status>\n  </propstat>`
+        `  <D:propstat>\n    <D:prop>\n${indentBlock(ps.props, 6)}\n    </D:prop>\n` +
+        `    <D:status>HTTP/1.1 ${ps.status}</D:status>\n  </D:propstat>`
     )
     .join("\n")
-  return `<response>\n  <href>${escapeXml(href)}</href>\n${inner}\n</response>\n`
+  return `<D:response>\n  <D:href>${escapeXml(href)}</D:href>\n${inner}\n</D:response>\n`
 }
 
 // ─── Request body parsers ────────────────────────────────────────────────────

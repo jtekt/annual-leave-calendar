@@ -1,6 +1,12 @@
 import { Request, Response } from "express"
 import createHttpError from "http-errors"
-import { entryToIcal, entryFilename, parseIcal, computeEtag, computeCtag } from "../../ical"
+import {
+  entryToIcal,
+  entryFilename,
+  parseIcal,
+  computeEtag,
+  computeCtag,
+} from "../ical"
 import {
   escapeXml,
   multistatusXml,
@@ -8,9 +14,13 @@ import {
   detectReportType,
   extractHrefs,
   extractSyncToken,
-} from "../../xml"
-import Entry from "../../models/entry"
-import { getOtherUserIdentifier, resolveUserQuery, resolveUserEntryFields } from "../../utils"
+} from "../xml"
+import Entry from "../models/entry"
+import {
+  getOtherUserIdentifier,
+  resolveUserQuery,
+  resolveUserEntryFields,
+} from "../utils"
 
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
@@ -19,14 +29,16 @@ export const handleRoot = (req: Request, res: Response) => {
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
 
   const props = [
-    `<current-user-principal><href>${escapeXml(principalHref)}</href></current-user-principal>`,
-    `<principal-collection-set><href>/caldav/principals/</href></principal-collection-set>`,
+    `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
+    `<D:principal-collection-set><D:href>/caldav/principals/</D:href></D:principal-collection-set>`,
   ].join("\n")
 
   res
     .status(207)
     .setHeader("Content-Type", "application/xml; charset=utf-8")
-    .send(multistatusXml([responseXml("/caldav/", [{ props, status: "200 OK" }])]))
+    .send(
+      multistatusXml([responseXml("/caldav/", [{ props, status: "200 OK" }])])
+    )
 }
 
 // ─── Principals (/caldav/principals/:user/) ───────────────────────────────────
@@ -38,16 +50,21 @@ export const handlePrincipalPropfind = (req: Request, res: Response) => {
   const calHomeHref = `/caldav/calendars/${encodedUser}/`
 
   const props = [
-    `<displayname>${escapeXml(identifier)}</displayname>`,
-    `<C:calendar-home-set><href>${escapeXml(calHomeHref)}</href></C:calendar-home-set>`,
-    `<principal-URL><href>${escapeXml(principalHref)}</href></principal-URL>`,
-    `<current-user-principal><href>${escapeXml(principalHref)}</href></current-user-principal>`,
+    `<D:displayname>${escapeXml(identifier)}</D:displayname>`,
+    `<C:calendar-home-set><D:href>${escapeXml(calHomeHref)}</D:href></C:calendar-home-set>`,
+    `<D:principal-URL><D:href>${escapeXml(principalHref)}</D:href></D:principal-URL>`,
+    `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
+    `<C:calendar-user-address-set><D:href>${escapeXml(principalHref)}</D:href></C:calendar-user-address-set>`,
   ].join("\n")
 
   res
     .status(207)
     .setHeader("Content-Type", "application/xml; charset=utf-8")
-    .send(multistatusXml([responseXml(principalHref, [{ props, status: "200 OK" }])]))
+    .send(
+      multistatusXml([
+        responseXml(principalHref, [{ props, status: "200 OK" }]),
+      ])
+    )
 }
 
 // ─── Calendar collection (/caldav/calendars/:user/) ───────────────────────────
@@ -55,23 +72,44 @@ export const handlePrincipalPropfind = (req: Request, res: Response) => {
 export const handleCalendarPropfind = async (req: Request, res: Response) => {
   const identifier = getOtherUserIdentifier(res.locals.user)
 
-  if (decodeURIComponent(req.params.user) !== identifier) throw createHttpError(403, "Forbidden")
+  if (decodeURIComponent(req.params.user) !== identifier)
+    throw createHttpError(403, "Forbidden")
 
   const depth = (req.headers["depth"] as string) ?? "0"
-  const entries = await Entry.find(resolveUserQuery({ user: res.locals.user })).lean()
+  const entries = await Entry.find(
+    resolveUserQuery({ user: res.locals.user })
+  ).lean()
   const ctag = computeCtag(entries)
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
 
+  const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
   const calProps = [
-    `<resourcetype><collection/><C:calendar/></resourcetype>`,
-    `<displayname>${escapeXml(identifier)} – Leave Calendar</displayname>`,
+    `<D:resourcetype><D:collection/><C:calendar/></D:resourcetype>`,
+    `<D:displayname>${escapeXml(identifier)} – Leave Calendar</D:displayname>`,
     `<CS:getctag>${escapeXml(ctag)}</CS:getctag>`,
-    `<sync-token>${escapeXml(ctag)}</sync-token>`,
+    `<D:sync-token>${escapeXml(ctag)}</D:sync-token>`,
     `<C:supported-calendar-component-set><C:comp name="VEVENT"/></C:supported-calendar-component-set>`,
     `<C:calendar-description>Leave calendar for ${escapeXml(identifier)}</C:calendar-description>`,
+    `<D:supported-report-set>`,
+    `  <D:supported-report><D:report><C:calendar-multiget/></D:report></D:supported-report>`,
+    `  <D:supported-report><D:report><C:calendar-query/></D:report></D:supported-report>`,
+    `  <D:supported-report><D:report><D:sync-collection/></D:report></D:supported-report>`,
+    `</D:supported-report-set>`,
+    `<D:current-user-privilege-set>`,
+    `  <D:privilege><D:read/></D:privilege>`,
+    `  <D:privilege><D:write/></D:privilege>`,
+    `  <D:privilege><D:write-content/></D:privilege>`,
+    `  <D:privilege><D:write-properties/></D:privilege>`,
+    `  <D:privilege><D:bind/></D:privilege>`,
+    `  <D:privilege><D:unbind/></D:privilege>`,
+    `</D:current-user-privilege-set>`,
+    `<D:current-user-principal><D:href>${escapeXml(principalHref)}</D:href></D:current-user-principal>`,
+    `<D:principal-URL><D:href>${escapeXml(principalHref)}</D:href></D:principal-URL>`,
   ].join("\n")
 
-  const responses: string[] = [responseXml(collHref, [{ props: calProps, status: "200 OK" }])]
+  const responses: string[] = [
+    responseXml(collHref, [{ props: calProps, status: "200 OK" }]),
+  ]
 
   if (depth === "1") {
     for (const entry of entries) {
@@ -80,9 +118,9 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
         responseXml(eventHref, [
           {
             props: [
-              `<resourcetype/>`,
-              `<getetag>${escapeXml(computeEtag(entry))}</getetag>`,
-              `<getcontenttype>text/calendar; charset=utf-8</getcontenttype>`,
+              `<D:resourcetype/>`,
+              `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
+              `<D:getcontenttype>text/calendar; charset=utf-8</D:getcontenttype>`,
             ].join("\n"),
             status: "200 OK",
           },
@@ -100,33 +138,43 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
 export const handleReport = async (req: Request, res: Response) => {
   const identifier = getOtherUserIdentifier(res.locals.user)
 
-  if (decodeURIComponent(req.params.user) !== identifier) throw createHttpError(403, "Forbidden")
+  if (decodeURIComponent(req.params.user) !== identifier)
+    throw createHttpError(403, "Forbidden")
 
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const body = (req.body as string) ?? ""
-  const entries = await Entry.find(resolveUserQuery({ user: res.locals.user })).lean()
+  const entries = await Entry.find(
+    resolveUserQuery({ user: res.locals.user })
+  ).lean()
 
   if (detectReportType(body) === "calendar-multiget") {
     const requestedFilenames = new Set(
-      extractHrefs(body).map((h) => decodeURIComponent(h.split("/").pop() ?? ""))
+      extractHrefs(body).map((h) =>
+        decodeURIComponent(h.split("/").pop() ?? "")
+      )
     )
-    const matched = entries.filter((e) => requestedFilenames.has(entryFilename(e)))
+    const matched = entries.filter((e: any) =>
+      requestedFilenames.has(entryFilename(e))
+    )
 
     return res
       .status(207)
       .setHeader("Content-Type", "application/xml; charset=utf-8")
       .send(
         multistatusXml(
-          matched.map((entry) =>
-            responseXml(`${collHref}${encodeURIComponent(entryFilename(entry))}`, [
-              {
-                props: [
-                  `<getetag>${escapeXml(computeEtag(entry))}</getetag>`,
-                  `<C:calendar-data>${escapeXml(entryToIcal(entry))}</C:calendar-data>`,
-                ].join("\n"),
-                status: "200 OK",
-              },
-            ])
+          matched.map((entry: any) =>
+            responseXml(
+              `${collHref}${encodeURIComponent(entryFilename(entry))}`,
+              [
+                {
+                  props: [
+                    `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
+                    `<C:calendar-data>${escapeXml(entryToIcal(entry))}</C:calendar-data>`,
+                  ].join("\n"),
+                  status: "200 OK",
+                },
+              ]
+            )
           )
         )
       )
@@ -139,22 +187,25 @@ export const handleReport = async (req: Request, res: Response) => {
 
     const xml =
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
-      `<multistatus xmlns="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:CS="http://calendarserver.org/ns/">\n` +
+      `<D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav" xmlns:CS="http://calendarserver.org/ns/">\n` +
       toReturn
-        .map((entry) =>
-          responseXml(`${collHref}${encodeURIComponent(entryFilename(entry))}`, [
-            {
-              props: [
-                `<getetag>${escapeXml(computeEtag(entry))}</getetag>`,
-                `<C:calendar-data>${escapeXml(entryToIcal(entry))}</C:calendar-data>`,
-              ].join("\n"),
-              status: "200 OK",
-            },
-          ])
+        .map((entry: any) =>
+          responseXml(
+            `${collHref}${encodeURIComponent(entryFilename(entry))}`,
+            [
+              {
+                props: [
+                  `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
+                  `<C:calendar-data>${escapeXml(entryToIcal(entry))}</C:calendar-data>`,
+                ].join("\n"),
+                status: "200 OK",
+              },
+            ]
+          )
         )
         .join("") +
-      `<sync-token>${escapeXml(currentCtag)}</sync-token>\n` +
-      `</multistatus>`
+      `<D:sync-token>${escapeXml(currentCtag)}</D:sync-token>\n` +
+      `</D:multistatus>`
 
     return res
       .status(207)
@@ -168,16 +219,19 @@ export const handleReport = async (req: Request, res: Response) => {
     .setHeader("Content-Type", "application/xml; charset=utf-8")
     .send(
       multistatusXml(
-        entries.map((entry) =>
-          responseXml(`${collHref}${encodeURIComponent(entryFilename(entry))}`, [
-            {
-              props: [
-                `<getetag>${escapeXml(computeEtag(entry))}</getetag>`,
-                `<C:calendar-data>${escapeXml(entryToIcal(entry))}</C:calendar-data>`,
-              ].join("\n"),
-              status: "200 OK",
-            },
-          ])
+        entries.map((entry: any) =>
+          responseXml(
+            `${collHref}${encodeURIComponent(entryFilename(entry))}`,
+            [
+              {
+                props: [
+                  `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
+                  `<C:calendar-data>${escapeXml(entryToIcal(entry))}</C:calendar-data>`,
+                ].join("\n"),
+                status: "200 OK",
+              },
+            ]
+          )
         )
       )
     )
@@ -198,10 +252,12 @@ export const handleEventGet = async (req: Request, res: Response) => {
 export const handleEventPut = async (req: Request, res: Response) => {
   const identifier = getOtherUserIdentifier(res.locals.user)
 
-  if (decodeURIComponent(req.params.user) !== identifier) throw createHttpError(403, "Forbidden")
+  if (decodeURIComponent(req.params.user) !== identifier)
+    throw createHttpError(403, "Forbidden")
 
   const parsed = parseIcal((req.body as string) ?? "")
-  if (!parsed.date) throw createHttpError(400, "Missing or unparseable DTSTART in iCal data")
+  if (!parsed.date)
+    throw createHttpError(400, "Missing or unparseable DTSTART in iCal data")
 
   const existing = await findEntry(req, res)
 
@@ -222,7 +278,11 @@ export const handleEventPut = async (req: Request, res: Response) => {
   })
 
   const location = `/caldav/calendars/${encodeURIComponent(identifier)}/${encodeURIComponent(entryFilename(newEntry))}`
-  res.setHeader("Location", location).setHeader("ETag", computeEtag(newEntry)).status(201).end()
+  res
+    .setHeader("Location", location)
+    .setHeader("ETag", computeEtag(newEntry))
+    .status(201)
+    .end()
 }
 
 export const handleEventDelete = async (req: Request, res: Response) => {
@@ -249,8 +309,8 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
         responseXml(eventHref, [
           {
             props: [
-              `<getetag>${escapeXml(computeEtag(entry))}</getetag>`,
-              `<getcontenttype>text/calendar; charset=utf-8</getcontenttype>`,
+              `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
+              `<D:getcontenttype>text/calendar; charset=utf-8</D:getcontenttype>`,
             ].join("\n"),
             status: "200 OK",
           },
@@ -264,5 +324,8 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
 async function findEntry(req: Request, res: Response) {
   const uid = decodeURIComponent(req.params.filename).replace(/\.ics$/i, "")
   if (!/^[a-f0-9]{24}$/i.test(uid)) return null
-  return Entry.findOne({ ...resolveUserQuery({ user: res.locals.user }), _id: uid })
+  return Entry.findOne({
+    ...resolveUserQuery({ user: res.locals.user }),
+    _id: uid,
+  })
 }

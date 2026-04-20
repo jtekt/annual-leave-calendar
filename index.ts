@@ -35,7 +35,10 @@ const corsOptions = {
 const app = express()
 
 app.use(express.json())
-app.use(cors(corsOptions))
+app.use((req, res, next) => {
+  if (req.path.startsWith("/caldav")) return next()
+  cors(corsOptions)(req, res, next)
+})
 app.use(promBundle(promOptions))
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
