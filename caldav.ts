@@ -19,16 +19,16 @@ export function entryToIcal(entry: any): string {
     `UID:${uid}`,
     `DTSTART;VALUE=DATE:${dtstart}`,
     `DTEND;VALUE=DATE:${dtend}`,
-    `SUMMARY:${buildSummary(entry)}`,
+    `SUMMARY:${escapeIcalText(buildSummary(entry))}`,
     `DTSTAMP:${now}`,
   ]
 
   if (entry.comment) {
-    lines.push(`DESCRIPTION:${entry.comment.replace(/\n/g, "\\n")}`)
+    lines.push(`DESCRIPTION:${escapeIcalText(entry.comment)}`)
   }
 
   lines.push("END:VEVENT", "END:VCALENDAR")
-  return lines.join("\r\n")
+  return lines.map(foldIcalLine).join("\r\n") + "\r\n"
 }
 
 /**
@@ -105,6 +105,35 @@ export function computeCtag(entries: any[]): string {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** RFC 5545 §3.3.11 TEXT escaping: backslash, semicolon, comma, newlines. */
+function escapeIcalText(str: string): string {
+  return str
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n/g, "\\n")
+    .replace(/[\r\n]/g, "\\n")
+}
+
+/** RFC 5545 §3.1: fold lines longer than 75 octets with CRLF + SPACE. */
+function foldIcalLine(line: string): string {
+  const bytes = Buffer.from(line, "utf8")
+  if (bytes.byteLength <= 75) return line
+
+  const parts: string[] = []
+  let offset = 0
+  let limit = 75
+  while (offset < bytes.byteLength) {
+    let end = Math.min(offset + limit, bytes.byteLength)
+    // don't split a multi-byte UTF-8 sequence
+    while (end < bytes.byteLength && (bytes[end] & 0xc0) === 0x80) end--
+    parts.push(Buffer.from(bytes.subarray(offset, end)).toString("utf8"))
+    offset = end
+    limit = 74 // continuation lines lose one octet to the leading space
+  }
+  return parts.join("\r\n ")
+}
+
 function buildSummary(entry: any): string {
   if (entry.refresh) return "更新休暇"
   if (entry.reserve) return "積立有休"
@@ -161,6 +190,7 @@ export function escapeXml(str: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+    .replace(/\r/g, "&#13;") // preserve CR so iCal CRLF survives XML line-ending normalization
 }
 
 interface Propstat {
@@ -181,11 +211,94 @@ export function responseXml(href: string, propstats: Propstat[]): string {
   const inner = propstats
     .map(
       (ps) =>
-        `  <D:propstat>\n    <D:prop>\n${indentBlock(ps.props, 6)}\n    </D:prop>\n` +
-        `    <D:status>HTTP/1.1 ${ps.status}</D:status>\n  </D:propstat>`
+        `<D:propstat><D:prop>${ps.props}</D:prop>` +
+        `<D:status>HTTP/1.1 ${ps.status}</D:status></D:propstat>`
     )
-    .join("\n")
-  return `<D:response>\n  <D:href>${escapeXml(href)}</D:href>\n${inner}\n</D:response>\n`
+    .join("")
+  return `<D:response><D:href>${escapeXml(href)}</D:href>${inner}</D:response>`
+}
+
+// ─── PROPFIND request parser ─────────────────────────────────────────────────
+
+const NS_TO_PREFIX: Record<string, string> = {
+  "DAV:": "D",
+  "urn:ietf:params:xml:ns:caldav": "C",
+  "http://calendarserver.org/ns/": "CS",
+}
+
+/**
+ * Parse a PROPFIND body and return the set of requested properties as
+ * "{namespace}localname" strings, or "allprop"/"propname" for those request types.
+ */
+export function parsePropfindRequest(
+  body: string
+): Set<string> | "allprop" | "propname" {
+  if (!body || /<(?:[^:>\s]+:)?allprop[\s/>]/i.test(body)) return "allprop"
+  if (/<(?:[^:>\s]+:)?propname[\s/>]/i.test(body)) return "propname"
+
+  const nsPrefixes: Record<string, string> = {}
+  for (const m of body.matchAll(/xmlns:([^=\s"']+)\s*=\s*["']([^"']+)["']/g)) {
+    nsPrefixes[m[1]] = m[2]
+  }
+  const defaultNsMatch = body.match(/\bxmlns\s*=\s*["']([^"']+)["']/)
+  const defaultNs = defaultNsMatch ? defaultNsMatch[1] : "DAV:"
+
+  const propMatch = body.match(
+    /<(?:[^:>\s]+:)?prop[^>]*>([\s\S]*?)<\/(?:[^:>\s]+:)?prop>/i
+  )
+  if (!propMatch) return "allprop"
+
+  const requested = new Set<string>()
+  for (const m of propMatch[1].matchAll(/<(?:([^:>\s]+):)?([^>\s/]+)/g)) {
+    const prefix = m[1] ?? ""
+    const localName = m[2]
+    const ns = prefix ? (nsPrefixes[prefix] ?? `${prefix}:`) : defaultNs
+    requested.add(`{${ns}}${localName}`)
+  }
+  return requested
+}
+
+/**
+ * Convert a "{namespace}localname" key back to an empty XML element,
+ * using our standard namespace prefixes.
+ */
+export function keyToEmptyElement(key: string): string {
+  const m = key.match(/^\{([^}]*)\}(.+)$/)
+  if (!m) return `<D:${key}/>`
+  const [, ns, localName] = m
+  const prefix = NS_TO_PREFIX[ns]
+  if (prefix) return `<${prefix}:${localName}/>`
+  return `<x:${localName} xmlns:x="${escapeXml(ns)}"/>`
+}
+
+/**
+ * Given a set of requested property keys and a map of key→xml-string,
+ * return propstat objects for 200 (found) and 404 (not found).
+ */
+export function buildPropstats(
+  requested: Set<string> | "allprop" | "propname",
+  propMap: Record<string, string>
+): Array<{ props: string; status: string }> {
+  if (requested === "allprop" || requested === "propname") {
+    const props = Object.values(propMap).join("\n")
+    return props ? [{ props, status: "200 OK" }] : []
+  }
+
+  const found: string[] = []
+  const notFound: string[] = []
+  for (const key of requested) {
+    if (key in propMap) {
+      found.push(propMap[key])
+    } else {
+      notFound.push(keyToEmptyElement(key))
+    }
+  }
+
+  const result: Array<{ props: string; status: string }> = []
+  if (found.length) result.push({ props: found.join("\n"), status: "200 OK" })
+  if (notFound.length)
+    result.push({ props: notFound.join("\n"), status: "404 Not Found" })
+  return result
 }
 
 // ─── Request body parsers ────────────────────────────────────────────────────
@@ -214,12 +327,3 @@ export function extractSyncToken(body: string): string | null {
   return match ? match[1].trim() : null
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function indentBlock(text: string, spaces: number): string {
-  const pad = " ".repeat(spaces)
-  return text
-    .split("\n")
-    .map((l) => `${pad}${l}`)
-    .join("\n")
-}
