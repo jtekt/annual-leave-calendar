@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { fetchUserData, getUserId, resolveUserEntryFields, resolveUserQuery } from "../../utils"
+import { fetchUserData, getUserId, normalizeToUtcMidnight, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
@@ -73,6 +73,7 @@ export const create_entry = async (req: Request, res: Response) => {
   const isSelf = identifier === "self" || identifier === current_user._id
 
   if (!date) throw createHttpError(400, `Date not provided`)
+  const normalizedDate = normalizeToUtcMidnight(date)
 
   if (!isSelf) {
     current_user = await fetchUserData(
@@ -82,7 +83,7 @@ export const create_entry = async (req: Request, res: Response) => {
   let userFields = resolveUserEntryFields(current_user);
   const entry_properties = {
     ...userFields,
-    date,
+    date: normalizedDate,
     type,
     am,
     pm,
@@ -95,7 +96,7 @@ export const create_entry = async (req: Request, res: Response) => {
   let identifierQuery = resolveUserQuery({ identifier, user: current_user })
 
   const filter = {
-    date,
+    date: normalizedDate,
     ...identifierQuery
   }
   const options = { new: true, upsert: true }

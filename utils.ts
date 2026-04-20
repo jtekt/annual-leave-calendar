@@ -37,6 +37,17 @@ export const resolveUserEntryFields = (user: any) => {
         : { oidc_user_identifier: user[OIDC_AUTH_IDENTIFIER] }; // OIDC
 };
 
+/**
+ * Normalize any date input to UTC midnight so that date-only values are stored
+ * consistently regardless of whether the client sends "2026-04-20" or a full
+ * datetime string. Prevents JST→UTC shifts from landing on the wrong calendar day.
+ */
+export const normalizeToUtcMidnight = (dateInput: string | Date): Date => {
+  const d = new Date(dateInput)
+  if (isNaN(d.getTime())) throw createHttpError(400, `Invalid date: ${dateInput}`)
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+}
+
 export const collectByKeys = <T>(
     list: T[],
     getKeys: (item: T) => (string | undefined)[],

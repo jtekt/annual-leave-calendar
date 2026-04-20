@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { collectByKeys, getUserId, getOtherUserIdentifier, resolveUserEntryFields, resolveUserQuery } from "../../utils"
+import { collectByKeys, getUserId, getOtherUserIdentifier, normalizeToUtcMidnight, resolveUserEntryFields, resolveUserQuery } from "../../utils"
 import IEntry from "../../interfaces/entry"
 import IAllocation from "../../interfaces/allocation"
 import { get_user_allocations_by_year, get_user_array_allocations_by_year } from "./allocations"
@@ -62,6 +62,7 @@ export const create_entry = async (req: Request, res: Response) => {
   if (!date) {
     throw createHttpError(400, "Date not provided");
   }
+  const normalizedDate = normalizeToUtcMidnight(date)
 
   let userFields: any;
   if (identifier) {
@@ -78,7 +79,7 @@ export const create_entry = async (req: Request, res: Response) => {
 
   const entryProperties = {
     ...userFields,
-    date,
+    date: normalizedDate,
     type,
     am,
     pm,
@@ -91,7 +92,7 @@ export const create_entry = async (req: Request, res: Response) => {
   let identifierQuery = resolveUserQuery({ identifier, user: res.locals.user });
 
   const filter = {
-    date,
+    date: normalizedDate,
     ...identifierQuery
   }
   const options = { new: true, upsert: true };
