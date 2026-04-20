@@ -319,6 +319,27 @@ export function extractHrefs(body: string): string[] {
   return matches.map((m) => m.replace(/<[^>]+>/g, "").trim())
 }
 
+/**
+ * Extract <C:time-range start="..." end="..."/> from a calendar-query REPORT body.
+ * Attributes are in iCal datetime format: 20240101T000000Z
+ */
+export function extractTimeRange(
+  body: string
+): { start: Date; end: Date } | null {
+  const m = body.match(/<[^:>\s]+:time-range[^>]+>/i)
+  if (!m) return null
+  const startMatch = m[0].match(/start="(\d{8}T\d{6}Z)"/)
+  const endMatch = m[0].match(/end="(\d{8}T\d{6}Z)"/)
+  if (!startMatch || !endMatch) return null
+  return { start: parseIcalDateTime(startMatch[1]), end: parseIcalDateTime(endMatch[1]) }
+}
+
+function parseIcalDateTime(s: string): Date {
+  return new Date(
+    `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}T${s.slice(9, 11)}:${s.slice(11, 13)}:${s.slice(13, 15)}Z`
+  )
+}
+
 /** Extract the <sync-token> value from a sync-collection REPORT body. */
 export function extractSyncToken(body: string): string | null {
   const match = body.match(
