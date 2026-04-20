@@ -6,15 +6,14 @@ import {
   parseIcal,
   computeEtag,
   computeCtag,
-} from "../ical"
-import {
   escapeXml,
   multistatusXml,
   responseXml,
   detectReportType,
   extractHrefs,
   extractSyncToken,
-} from "../xml"
+} from "../caldav"
+
 import Entry from "../models/entry"
 import {
   getOtherUserIdentifier,
