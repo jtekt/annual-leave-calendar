@@ -35,7 +35,12 @@ const corsOptions = {
 const app = express()
 
 app.use(express.json())
-app.use(cors(corsOptions))
+
+// cors() should not be used for caldav
+app.use((req, res, next) => {
+  if (req.path.startsWith("/caldav")) return next()
+  cors(corsOptions)(req, res, next)
+})
 app.use(promBundle(promOptions))
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
@@ -65,19 +70,16 @@ app.listen(APP_PORT, () => {
 
 app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   // Basic request info
-  const method = req.method;
-  const route = req.route?.path || "unknown route";
+  const method = req.method
+  const route = req.route?.path || "unknown route"
 
   const { user } = res.locals
   let current_user = getUserId(user)
   let { statusCode = 500, message = error } = error
-  console.error(
-    `${current_user} : [${method} | ${route}] Error: ${message}`
-  );
+  console.error(`${current_user} : [${method} | ${route}] Error: ${message}`)
   if (isNaN(statusCode) || statusCode > 600) statusCode = 500
   res.status(statusCode).send(message)
 })
 
 // Export app for TDD
 export default app
-
