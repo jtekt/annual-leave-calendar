@@ -23,6 +23,16 @@ import {
   resolveUserEntryFields,
 } from "../utils"
 
+function currentYearDateFilter() {
+  const year = new Date().getUTCFullYear()
+  return {
+    date: {
+      $gte: new Date(Date.UTC(year, 0, 1)),
+      $lte: new Date(Date.UTC(year, 11, 31)),
+    },
+  }
+}
+
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
 export const handleRoot = (req: Request, res: Response) => {
@@ -77,9 +87,10 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
     throw createHttpError(403, "Forbidden")
 
   const depth = (req.headers["depth"] as string) ?? "0"
-  const entries = await Entry.find(
-    resolveUserQuery({ user: res.locals.user })
-  ).lean()
+  const entries = await Entry.find({
+    ...resolveUserQuery({ user: res.locals.user }),
+    ...currentYearDateFilter(),
+  }).lean()
   const ctag = computeCtag(entries)
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
@@ -147,9 +158,10 @@ export const handleReport = async (req: Request, res: Response) => {
 
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const body = (req.body as string) ?? ""
-  const entries = await Entry.find(
-    resolveUserQuery({ user: res.locals.user })
-  ).lean()
+  const entries = await Entry.find({
+    ...resolveUserQuery({ user: res.locals.user }),
+    ...currentYearDateFilter(),
+  }).lean()
 
   if (detectReportType(body) === "calendar-multiget") {
     const requestedFilenames = new Set(
