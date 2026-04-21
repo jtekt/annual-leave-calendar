@@ -12,6 +12,7 @@ import {
   detectReportType,
   extractHrefs,
   extractSyncToken,
+  extractTimeRange,
   parsePropfindRequest,
   buildPropstats,
 } from "../caldav"
@@ -22,6 +23,7 @@ import {
   resolveUserQuery,
   resolveUserEntryFields,
 } from "../utils"
+
 
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
@@ -147,9 +149,14 @@ export const handleReport = async (req: Request, res: Response) => {
 
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const body = (req.body as string) ?? ""
-  const entries = await Entry.find(
-    resolveUserQuery({ user: res.locals.user })
-  ).lean()
+  const timeRange = extractTimeRange(body)
+  const dateFilter = timeRange
+    ? { date: { $gte: timeRange.start, $lte: timeRange.end } }
+    : {}
+  const entries = await Entry.find({
+    ...resolveUserQuery({ user: res.locals.user }),
+    ...dateFilter,
+  }).lean()
 
   if (detectReportType(body) === "calendar-multiget") {
     const requestedFilenames = new Set(
