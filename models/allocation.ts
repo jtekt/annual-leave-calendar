@@ -13,6 +13,7 @@ const schema = new Schema<IAllocation>({
     current_year_grants: { type: Number, default: 0, required: true },
     carried_over: { type: Number, default: 0, required: true },
   },
+  target: { type: Number },
 })
 
 // Unique when user_id exists
