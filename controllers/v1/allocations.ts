@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { fetchUserData, getUserId, resolveUserEntryFields, resolveUserQuery } from "../../utils"
+import { fetchUserData, getUserId } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -21,12 +21,11 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   const isSelf = identifier === "self" || identifier === current_user._id
 
   if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
+    current_user = await fetchUserData(identifier, req.headers.authorization)
   }
   const { year } = req.query as any
 
-  const query: any = resolveUserQuery({ identifier, user: current_user });
+  const query: any = { user_id: getUserId(current_user) }
   if (year) query.year = year
 
   const allocations = await Allocation.find(query).sort("year")
@@ -167,22 +166,19 @@ export const create_allocation = async (req: Request, res: Response) => {
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
   if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
+    current_user = await fetchUserData(identifier, req.headers.authorization)
   }
 
-  let userFields = resolveUserEntryFields(res.locals.user);
-  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
-
+  const user_id = getUserId(current_user)
   const allocation_properties = {
     year,
-    ...userFields,
+    user_id,
     leaves,
     reserve,
     leave_target,
   }
 
-  const filter = { year, ...identifierQuery }
+  const filter = { year, user_id }
   const options = { new: true, upsert: true }
 
   const allocation = await Allocation.findOneAndUpdate(

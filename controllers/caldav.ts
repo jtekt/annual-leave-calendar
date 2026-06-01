@@ -18,17 +18,12 @@ import {
 } from "../caldav"
 
 import Entry from "../models/entry"
-import {
-  getOtherUserIdentifier,
-  resolveUserQuery,
-  resolveUserEntryFields,
-} from "../utils"
-
+import { getUserId } from "../utils"
 
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
 export const handleRoot = (req: Request, res: Response) => {
-  const identifier = getOtherUserIdentifier(res.locals.user)
+  const identifier = getUserId(res.locals.user)
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
 
   const propMap: Record<string, string> = {
@@ -48,7 +43,7 @@ export const handleRoot = (req: Request, res: Response) => {
 // ─── Principals (/caldav/principals/:user/) ───────────────────────────────────
 
 export const handlePrincipalPropfind = (req: Request, res: Response) => {
-  const identifier = getOtherUserIdentifier(res.locals.user)
+  const identifier = getUserId(res.locals.user)
   const encodedUser = encodeURIComponent(identifier)
   const principalHref = `/caldav/principals/${encodedUser}/`
   const calHomeHref = `/caldav/calendars/${encodedUser}/`
@@ -73,15 +68,13 @@ export const handlePrincipalPropfind = (req: Request, res: Response) => {
 // ─── Calendar collection (/caldav/calendars/:user/) ───────────────────────────
 
 export const handleCalendarPropfind = async (req: Request, res: Response) => {
-  const identifier = getOtherUserIdentifier(res.locals.user)
+  const identifier = getUserId(res.locals.user)
 
   if (decodeURIComponent(req.params.user) !== identifier)
     throw createHttpError(403, "Forbidden")
 
   const depth = (req.headers["depth"] as string) ?? "0"
-  const entries = await Entry.find(
-    resolveUserQuery({ user: res.locals.user })
-  ).lean()
+  const entries = await Entry.find({ user_id: identifier }).lean()
   const ctag = computeCtag(entries)
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
@@ -131,7 +124,9 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
         ...eventPropMap,
         "{DAV:}getetag": `<D:getetag>${escapeXml(computeEtag(entry))}</D:getetag>`,
       }
-      responses.push(responseXml(eventHref, buildPropstats(requested, entryPropMap)))
+      responses.push(
+        responseXml(eventHref, buildPropstats(requested, entryPropMap))
+      )
     }
   }
 
@@ -142,7 +137,7 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
 }
 
 export const handleReport = async (req: Request, res: Response) => {
-  const identifier = getOtherUserIdentifier(res.locals.user)
+  const identifier = getUserId(res.locals.user)
 
   if (decodeURIComponent(req.params.user) !== identifier)
     throw createHttpError(403, "Forbidden")
@@ -154,7 +149,7 @@ export const handleReport = async (req: Request, res: Response) => {
     ? { date: { $gte: timeRange.start, $lte: timeRange.end } }
     : {}
   const entries = await Entry.find({
-    ...resolveUserQuery({ user: res.locals.user }),
+    ...{ user_id: identifier },
     ...dateFilter,
   }).lean()
 
@@ -261,7 +256,7 @@ export const handleEventGet = async (req: Request, res: Response) => {
 }
 
 export const handleEventPut = async (req: Request, res: Response) => {
-  const identifier = getOtherUserIdentifier(res.locals.user)
+  const identifier = getUserId(res.locals.user)
 
   if (decodeURIComponent(req.params.user) !== identifier)
     throw createHttpError(403, "Forbidden")
@@ -282,7 +277,7 @@ export const handleEventPut = async (req: Request, res: Response) => {
   }
 
   const newEntry = await Entry.create({
-    ...resolveUserEntryFields(res.locals.user),
+    user_id: identifier,
     date: parsed.date,
     type: parsed.type ?? "有休",
     comment: parsed.comment,
@@ -308,7 +303,7 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
   const entry = await findEntry(req, res)
   if (!entry) return res.status(404).send("Event not found")
 
-  const identifier = getOtherUserIdentifier(res.locals.user)
+  const identifier = getUserId(res.locals.user)
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const eventHref = `${collHref}${encodeURIComponent(entryFilename(entry))}`
 
@@ -322,16 +317,21 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
   res
     .status(207)
     .setHeader("Content-Type", "application/xml; charset=utf-8")
-    .send(multistatusXml([responseXml(eventHref, buildPropstats(requested, propMap))]))
+    .send(
+      multistatusXml([
+        responseXml(eventHref, buildPropstats(requested, propMap)),
+      ])
+    )
 }
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
 
 async function findEntry(req: Request, res: Response) {
   const uid = decodeURIComponent(req.params.filename).replace(/\.ics$/i, "")
+  const userId = getUserId(res.locals.user)
   if (!/^[a-f0-9]{24}$/i.test(uid)) return null
   return Entry.findOne({
-    ...resolveUserQuery({ user: res.locals.user }),
+    user_id: userId,
     _id: uid,
   })
 }

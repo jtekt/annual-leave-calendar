@@ -10,9 +10,9 @@ const router = Router()
 router.all("/.well-known/caldav", (_req, res) => res.redirect(301, "/caldav/"))
 router.use("/caldav", caldavRouter)
 
-router.use("/v1", identificationMiddleware(), router_v1)
-router.use("/v2", identificationMiddleware(), router_v2)
-
-router.use("/", identificationMiddleware(), router_v1)
+router.use(identificationMiddleware())
+router.use("/", router_v1)
+router.use("/v1", router_v1)
+router.use("/v2", router_v2)
 
 export default router

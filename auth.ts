@@ -7,7 +7,22 @@ const { USER_MANAGER_API_URL } = process.env
 export const identificationMiddleware = () => {
   if (!USER_MANAGER_API_URL)
     throw createHttpError(400, `USER_MANAGER_API_URL not provided`)
-  return legacyAuth({ url: `${USER_MANAGER_API_URL}/v3/users/self` })
+
+  const url = `${USER_MANAGER_API_URL}/v3/users/self`
+  console.log("Using USER_MANAGER_API_URL:", url)
+
+  const legacy = legacyAuth({ url })
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    const safeHeaders: { [key: string]: string } = {}
+    if (req.headers.authorization) {
+      safeHeaders.authorization = req.headers.authorization as string
+    }
+    safeHeaders.accept = "application/json"
+    req.headers = safeHeaders
+
+    return legacy(req, res, next)
+  }
 }
 
 /**
