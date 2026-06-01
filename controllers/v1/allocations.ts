@@ -157,7 +157,6 @@ export const create_allocation = async (req: Request, res: Response) => {
     year,
     leaves = { current_year_grants: 0, carried_over: 0 },
     reserve = { current_year_grants: 0, carried_over: 0 },
-    leave_target,
   } = req.body
 
   let identifier: string | undefined = req.params.user_id
@@ -179,7 +178,6 @@ export const create_allocation = async (req: Request, res: Response) => {
     ...userFields,
     leaves,
     reserve,
-    leave_target,
   }
 
   const filter = { year, ...identifierQuery }
