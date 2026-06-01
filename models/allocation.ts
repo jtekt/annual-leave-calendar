@@ -8,12 +8,12 @@ const schema = new Schema<IAllocation>({
   leaves: {
     current_year_grants: { type: Number, default: 0, required: true },
     carried_over: { type: Number, default: 0, required: true },
+    target: { type: Number },
   },
   reserve: {
     current_year_grants: { type: Number, default: 0, required: true },
     carried_over: { type: Number, default: 0, required: true },
   },
-  leave_target: { type: Number },
 })
 
 // Unique when user_id exists

@@ -5,13 +5,13 @@ interface IAllocation  {
     leaves: {
         current_year_grants: number;
         carried_over: number;
+        target?: number;
     }
     reserve: {
         current_year_grants: number;
         carried_over: number;
     }
-    leave_target?: number
   }
-  
+
   export default IAllocation
   
