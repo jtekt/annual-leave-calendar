@@ -10,6 +10,7 @@ interface IAllocation  {
         current_year_grants: number;
         carried_over: number;
     }
+    leave_target?: number
   }
   
   export default IAllocation
