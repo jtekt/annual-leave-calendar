@@ -19,7 +19,6 @@ import { getUserId } from "./utils"
 
 const {
   APP_PORT = 80,
-  OIDC_JWKS_URI,
   GROUP_MANAGER_API_URL = "UNDEFINED",
   USER_MANAGER_API_URL,
 } = process.env
@@ -51,7 +50,6 @@ app.get("/", (req: Request, res: Response) => {
     version,
     auth: {
       identification_url: USER_MANAGER_API_URL || "Unset",
-      oidc_jwk_url: OIDC_JWKS_URI || "Unset",
     },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     user_manager_api_url: USER_MANAGER_API_URL || "Unset",
