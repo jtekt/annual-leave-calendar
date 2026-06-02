@@ -1,6 +1,6 @@
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { fetchUserData, getUserId, resolveUserQuery } from "../../utils"
+import { fetchUserData, getUserId } from "../../utils"
 import { get_user_allocations_by_year } from "../v1/allocations"
 import { Request, Response } from "express"
 
@@ -16,8 +16,7 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   const isSelf = identifier === "self" || identifier === current_user._id
 
   if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
+    current_user = await fetchUserData(identifier, req.headers.authorization)
   }
   const {
     year = new Date().getFullYear(),
@@ -30,21 +29,19 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-
-  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
+  const user_id = getUserId(current_user)
   const query = {
     $and: [
-      identifierQuery,
+      { user_id },
       {
         date: { $gte: start_of_date, $lte: end_of_date },
       },
     ],
-  };
+  }
 
   const entries = await Entry.find(query).sort("date")
 
-  const allocations = await get_user_allocations_by_year(year, current_user._id)
+  const allocations = await get_user_allocations_by_year(year, user_id)
 
   res.send({ entries, allocations })
 }
-

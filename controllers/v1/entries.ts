@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { fetchUserData, getUserId, resolveUserEntryFields, resolveUserQuery } from "../../utils"
+import { getUserId } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
@@ -20,36 +20,25 @@ function get_current_user(res: Response) {
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
-  let current_user = get_current_user(res)
-  const isSelf = identifier === "self" || identifier === current_user._id
+  const identifier = req.params.user_id
+  if (!identifier) throw createHttpError(400, "User ID not provided")
 
-  if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
-  }
+  const currentUser = get_current_user(res)
+  const user_id = identifier === "self" ? getUserId(currentUser) : identifier
 
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-  } = req.query as any
+  const year = Number((req.query as any).year) || new Date().getFullYear()
+  const start = (req.query as any).start_date
+    ? new Date((req.query as any).start_date)
+    : new Date(`${year}-01-01`)
 
-  const start_of_date = start_date
-    ? new Date(start_date)
-    : new Date(`${year}/01/01`)
-  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
+  const end = (req.query as any).end_date
+    ? new Date((req.query as any).end_date)
+    : new Date(`${year}-12-31`)
 
-  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
   const query = {
-    $and: [
-      identifierQuery,
-      {
-        date: { $gte: start_of_date, $lte: end_of_date },
-      },
-    ],
-  };
+    user_id,
+    date: { $gte: start, $lte: end },
+  }
 
   const entries = await Entry.find(query).sort("date")
 
@@ -57,6 +46,9 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 }
 
 export const create_entry = async (req: Request, res: Response) => {
+  const identifier = req.params.user_id
+  if (!identifier) throw createHttpError(400, "User ID not provided")
+
   const {
     date,
     type = "有休",
@@ -67,40 +59,28 @@ export const create_entry = async (req: Request, res: Response) => {
     plus_one = false,
     reserve = false,
   } = req.body
-  let identifier: string | undefined = req.params.user_id
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
-  let current_user = get_current_user(res)
-  const isSelf = identifier === "self" || identifier === current_user._id
 
-  if (!date) throw createHttpError(400, `Date not provided`)
+  if (!date) throw createHttpError(400, "Date not provided")
 
-  if (!isSelf) {
-    current_user = await fetchUserData(
-      identifier, req.headers.authorization)
-  }
+  // Determine if it's the same user
+  const currentUser = get_current_user(res)
+  const user_id = identifier === "self" ? getUserId(currentUser) : identifier
 
-  let userFields = resolveUserEntryFields(current_user);
-  const entry_properties = {
-    ...userFields,
-    date,
-    type,
-    am,
-    pm,
-    taken,
-    refresh,
-    plus_one,
-    reserve,
-  }
-
-  let identifierQuery = resolveUserQuery({ identifier, user: current_user })
-
-  const filter = {
-    date,
-    ...identifierQuery
-  }
-  const options = { new: true, upsert: true }
-
-  const entry = await Entry.findOneAndUpdate(filter, entry_properties, options)
+  const entry = await Entry.findOneAndUpdate(
+    { user_id, date },
+    {
+      user_id,
+      date,
+      type,
+      am,
+      pm,
+      taken,
+      refresh,
+      plus_one,
+      reserve,
+    },
+    { new: true, upsert: true }
+  )
 
   res.send(entry)
 }
@@ -137,33 +117,33 @@ export const get_all_entries = async (req: Request, res: Response) => {
     skip = 0,
   } = req.query as any
 
-  const start_of_date = start_date
-    ? new Date(start_date)
-    : new Date(`${year}/01/01`)
-  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
+  const start_of_date = new Date(start_date || `${year}/01/01`)
+  const end_of_date = new Date(end_date || `${year}/12/31`)
 
   const query: any = {
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
-  if (user_ids) query.$or = user_ids.map((user_id: string) => ({ user_id }))
+  if (user_ids) {
+    const ids = Array.isArray(user_ids) ? user_ids : String(user_ids).split(",")
+    query.$or = ids.map((id) => ({ user_id: id }))
+  }
 
-  const entries = await Entry.find(query)
-    .skip(Number(skip))
-    .limit(Math.max(Number(limit), 0))
+  const numericLimit = Math.max(Number(limit), 0)
+  const numericSkip = Number(skip)
+
+  const entries = await Entry.find(query).skip(numericSkip).limit(numericLimit)
 
   const total = await Entry.countDocuments(query)
 
-  const response = {
+  res.send({
     start_of_date,
     end_of_date,
-    limit,
-    skip,
+    limit: numericLimit,
+    skip: numericSkip,
     total,
     entries,
-  }
-
-  res.send(response)
+  })
 }
 
 export const update_entry = async (req: Request, res: Response) => {
@@ -250,34 +230,26 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     skip = 0,
   } = req.query as any
 
-  let users: any[]
-  let total_of_users: number
+  let users: any[] = []
+  let total_of_users = 0
+
   try {
     const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
     const headers = { authorization: req.headers.authorization }
-    const params = {
-      batch_size: limit,
-      start_index: skip,
-    }
+    const params = { batch_size: limit, start_index: skip }
 
     const { data } = await axios.get(url, { headers, params })
-    const { items, count } = data
-    users = items
-    total_of_users = count
+    users = data.items
+    total_of_users = data.count
   } catch (error: any) {
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query group members" } = response
-    throw createHttpError(status, `${data}: ${group_id}`)
+    const status = error?.response?.status || 500
+    const msg = error?.response?.data || "Failed to query group members"
+    throw createHttpError(status, `${msg}: ${group_id}`)
   }
 
-  const start_of_date = start_date
-    ? new Date(start_date)
-    : new Date(`${year}/01/01`)
-  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
-
-  const user_ids = users.map((user: IUser) => ({
-    user_id: getUserId(user),
-  }))
+  const start_of_date = new Date(start_date || `${year}/01/01`)
+  const end_of_date = new Date(end_date || `${year}/12/31`)
+  const user_ids = users.map((user: IUser) => ({ user_id: getUserId(user) }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
@@ -296,12 +268,12 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     return prev
   }, {})
 
-  const result_allocations = await get_user_array_allocations_by_year(
+  const { allocations } = await get_user_array_allocations_by_year(
     year,
     user_ids
   )
 
-  const allocations_mapping = result_allocations.allocations.reduce(
+  const allocations_mapping = allocations.reduce(
     (prev: any, allocation: IAllocation) => {
       const { user_id } = allocation
       if (!prev[user_id]) prev[user_id] = {}
@@ -311,7 +283,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     {}
   )
 
-  const output = users.map((user: IGroup) => {
+  const items = users.map((user: IGroup) => {
     const user_id = getUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
@@ -322,16 +294,14 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     return { user, entries, allocations }
   })
 
-  const response = {
+  res.send({
     start_of_date,
     end_of_date,
     limit,
     skip,
     total: total_of_users,
-    items: output,
-  }
-
-  res.send(response)
+    items,
+  })
 }
 
 export const get_entries_of_workplace = async (req: Request, res: Response) => {
@@ -345,37 +315,29 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     skip = 0,
   } = req.query as any
 
-  let users: any[]
-  let total_of_users: number
+  let users: any[] = []
+  let total_of_users = 0
+
   try {
     const url = `${WORKPLACE_MANAGER_API_URL}/v2/workplaces/${workplace_id}/employees`
     const headers = { authorization: req.headers.authorization }
-    const params = {
-      batch_size: limit,
-      start_index: skip,
-    }
+    const params = { batch_size: limit, start_index: skip }
 
-    const { data, headers: workplaceResHeader } = await axios.get(url, {
+    const { data, headers: workplaceHeader } = await axios.get(url, {
       headers,
       params,
     })
     users = data
-    total_of_users = Number(workplaceResHeader["x-total"])
+    total_of_users = Number(workplaceHeader["x-total"])
   } catch (error: any) {
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    throw createHttpError(status, `${data}: ${workplace_id}`)
+    const status = error?.response?.status || 500
+    const msg = error?.response?.data || "Failed to query workplace members"
+    throw createHttpError(status, `${msg}: ${workplace_id}`)
   }
 
-  const start_of_date = start_date
-    ? new Date(start_date)
-    : new Date(`${year}/01/01`)
-  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
-
-  const user_ids = users.map((user: IUser) => ({
-    user_id: getUserId(user),
-  }))
+  const start_of_date = new Date(start_date || `${year}/01/01`)
+  const end_of_date = new Date(end_date || `${year}/12/31`)
+  const user_ids = users.map((user: IUser) => ({ user_id: getUserId(user) }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Workplace ${workplace_id} appears to be empty`)
@@ -394,12 +356,12 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     return prev
   }, {})
 
-  const result_allocations = await get_user_array_allocations_by_year(
+  const { allocations } = await get_user_array_allocations_by_year(
     year,
     user_ids
   )
 
-  const allocations_mapping = result_allocations.allocations.reduce(
+  const allocations_mapping = allocations.reduce(
     (prev: any, allocation: IAllocation) => {
       const { user_id } = allocation
       if (!prev[user_id]) prev[user_id] = {}
@@ -409,7 +371,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     {}
   )
 
-  const output = users.map((user: IUser) => {
+  const items = users.map((user: IUser) => {
     const user_id = getUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
@@ -419,14 +381,12 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     return { user, entries, allocations }
   })
 
-  const response = {
+  res.send({
     start_of_date,
     end_of_date,
     limit,
     skip,
     total: total_of_users,
-    items: output,
-  }
-
-  res.send(response)
+    items,
+  })
 }
