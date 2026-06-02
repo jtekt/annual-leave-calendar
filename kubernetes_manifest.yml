@@ -20,12 +20,6 @@ spec:
             - secretRef:
                 name: environment-variables
           env:
-            - name: OIDC_JWKS_URI
-              value: https://keycloak.jtektrnd.net/realms/jtekt/protocol/openid-connect/certs
-            - name: OIDC_AUTH_IDENTIFIER
-              value: preferred_username
-            - name: LEGACY_AUTH_IDENTIFIER
-              value: username
             - name: USER_MANAGER_API_URL
               value: http://employee-manager
 ---
