@@ -49,7 +49,14 @@ export const caldavMiddleware = (): RequestHandler => {
       return next(createHttpError(401, "Invalid credentials"))
     }
 
+    // Save headers before identificationMiddleware strips them — CalDAV handlers
+    // need Depth, Content-Type, etc. after auth completes.
+    const savedHeaders = { ...req.headers }
     req.headers.authorization = `Bearer ${decoded.slice(colonIdx + 1)}`
-    inner(req, res, next)
+
+    inner(req, res, (err?: any) => {
+      req.headers = { ...savedHeaders }
+      next(err)
+    })
   }
 }
