@@ -1,7 +1,8 @@
 import IEntry from "./entry"
-interface IUser {
+
+interface IUser extends Record<string, any> {
   _id?: string
-  properties?: {
+  properties?: Record<string, any> & {
     _id: string
   }
   entries: IEntry[]

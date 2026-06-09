@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { getUserId } from "../../utils"
+import { fetchUserData, getAllUserIdentifiers, getUserId } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
@@ -24,7 +24,18 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   if (!identifier) throw createHttpError(400, "User ID not provided")
 
   const currentUser = get_current_user(res)
-  const user_id = identifier === "self" ? getUserId(currentUser) : identifier
+  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
+
+  // 1. If the param matches ANY identifier of the current user, it's self
+  const isSelf =
+    identifier === "self" || currentUserIdentifiers.includes(identifier)
+
+  const targetUser = isSelf
+    ? currentUser
+    : await fetchUserData(identifier, req.headers.authorization)
+
+  // 2. configured ID always used for DB queries
+  const user_id = getUserId(targetUser)
 
   const year = Number((req.query as any).year) || new Date().getFullYear()
   const start = (req.query as any).start_date
@@ -64,7 +75,18 @@ export const create_entry = async (req: Request, res: Response) => {
 
   // Determine if it's the same user
   const currentUser = get_current_user(res)
-  const user_id = identifier === "self" ? getUserId(currentUser) : identifier
+  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
+
+  // 1. If the param matches ANY identifier of the current user, it's self
+  const isSelf =
+    identifier === "self" || currentUserIdentifiers.includes(identifier)
+
+  const targetUser = isSelf
+    ? currentUser
+    : await fetchUserData(identifier, req.headers.authorization)
+
+  // 2. configured ID always used for DB queries
+  const user_id = getUserId(targetUser)
 
   const entry = await Entry.findOneAndUpdate(
     { user_id, date },

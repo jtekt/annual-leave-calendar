@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { fetchUserData, getUserId } from "../../utils"
+import { fetchUserData, getAllUserIdentifiers, getUserId } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -15,17 +15,26 @@ function get_current_user(res: Response) {
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
-  let current_user = get_current_user(res)
-  const isSelf = identifier === "self" || identifier === current_user._id
+  const identifier = req.params.user_id
+  if (!identifier) throw createHttpError(400, "User ID not provided")
 
-  if (!isSelf) {
-    current_user = await fetchUserData(identifier, req.headers.authorization)
-  }
+  const currentUser = get_current_user(res)
+  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
+
+  // 1. If the param matches ANY identifier of the current user, it's self
+  const isSelf =
+    identifier === "self" || currentUserIdentifiers.includes(identifier)
+
+  const targetUser = isSelf
+    ? currentUser
+    : await fetchUserData(identifier, req.headers.authorization)
+
+  // 2. configured ID always used for DB queries
+  const user_id = getUserId(targetUser)
+
   const { year } = req.query as any
 
-  const query: any = { user_id: getUserId(current_user) }
+  const query: any = { user_id }
   if (year) query.year = year
 
   const allocations = await Allocation.find(query).sort("year")
@@ -162,13 +171,19 @@ export const create_allocation = async (req: Request, res: Response) => {
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
-  let current_user = get_current_user(res)
-  const isSelf = identifier === "self" || identifier === current_user._id
-  if (!isSelf) {
-    current_user = await fetchUserData(identifier, req.headers.authorization)
-  }
+  const currentUser = get_current_user(res)
+  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
 
-  const user_id = getUserId(current_user)
+  // 1. If the param matches ANY identifier of the current user, it's self
+  const isSelf =
+    identifier === "self" || currentUserIdentifiers.includes(identifier)
+
+  const targetUser = isSelf
+    ? currentUser
+    : await fetchUserData(identifier, req.headers.authorization)
+
+  // 2. configured ID always used for DB queries
+  const user_id = getUserId(targetUser)
   const allocation_properties = {
     year,
     user_id,

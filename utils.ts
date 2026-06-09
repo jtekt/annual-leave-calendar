@@ -2,11 +2,34 @@ import createHttpError from "http-errors"
 import IUser from "./interfaces/user"
 import axios from "axios"
 
-const { USER_MANAGER_API_URL } = process.env
+const { USER_MANAGER_API_URL, IDENTIFIER_FIELD = "_id" } = process.env
+const identifierFields = IDENTIFIER_FIELD.split(",")
+  .map((f) => f.trim())
+  .filter(Boolean)
+
 export const getUserId = (user: IUser): string => {
-  const id = user._id || user.properties?._id
-  if (!id) throw new Error("User ID not found")
-  return id
+  for (const field of identifierFields) {
+    const fromUser = user[field]
+    if (fromUser) return fromUser
+
+    const fromProps = user.properties?.[field]
+    if (fromProps) return fromProps
+  }
+
+  throw new Error(
+    "User ID not found using fields: " + identifierFields.join(", ")
+  )
+}
+
+export const getAllUserIdentifiers = (user: IUser): string[] => {
+  const values: string[] = []
+
+  for (const field of identifierFields) {
+    const v = user[field] || user.properties?.[field]
+    if (v) values.push(String(v))
+  }
+
+  return values
 }
 
 export const collectByKeys = <T>(

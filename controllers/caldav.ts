@@ -18,7 +18,7 @@ import {
 } from "../caldav"
 
 import Entry from "../models/entry"
-import { getUserId } from "../utils"
+import { getAllUserIdentifiers, getUserId } from "../utils"
 
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
@@ -68,10 +68,14 @@ export const handlePrincipalPropfind = (req: Request, res: Response) => {
 // ─── Calendar collection (/caldav/calendars/:user/) ───────────────────────────
 
 export const handleCalendarPropfind = async (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const user = res.locals.user
+  const requestedId = decodeURIComponent(req.params.user)
 
-  if (decodeURIComponent(req.params.user) !== identifier)
+  const identifiers = getAllUserIdentifiers(user)
+  if (!identifiers.includes(requestedId)) {
     throw createHttpError(403, "Forbidden")
+  }
+  const identifier = getUserId(user)
 
   const depth = (req.headers["depth"] as string) ?? "0"
   const entries = await Entry.find({ user_id: identifier }).lean()
@@ -137,10 +141,14 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
 }
 
 export const handleReport = async (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
-
-  if (decodeURIComponent(req.params.user) !== identifier)
+  const user = res.locals.user
+  const requestedId = decodeURIComponent(req.params.user)
+  const identifiers = getAllUserIdentifiers(user)
+  if (!identifiers.includes(requestedId)) {
     throw createHttpError(403, "Forbidden")
+  }
+
+  const identifier = getUserId(user)
 
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const body = (req.body as string) ?? ""
@@ -256,10 +264,14 @@ export const handleEventGet = async (req: Request, res: Response) => {
 }
 
 export const handleEventPut = async (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const user = res.locals.user
+  const requestedId = decodeURIComponent(req.params.user)
 
-  if (decodeURIComponent(req.params.user) !== identifier)
+  const identifiers = getAllUserIdentifiers(user)
+  if (!identifiers.includes(requestedId)) {
     throw createHttpError(403, "Forbidden")
+  }
+  const identifier = getUserId(user)
 
   const parsed = parseIcal((req.body as string) ?? "")
   if (!parsed.date)
