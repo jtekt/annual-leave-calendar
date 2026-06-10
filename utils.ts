@@ -3,7 +3,7 @@ import IUser from "./interfaces/user"
 import axios from "axios"
 import { Request, Response } from "express"
 
-const { USER_MANAGER_API_URL, IDENTIFIER_FIELD = "_id,username" } = process.env
+const { USER_MANAGER_API_URL, IDENTIFIER_FIELD = "_id" } = process.env
 const identifierFields = IDENTIFIER_FIELD.split(",")
   .map((f) => f.trim())
   .filter(Boolean)
