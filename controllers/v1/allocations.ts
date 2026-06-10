@@ -1,7 +1,7 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { fetchUserData, getAllUserIdentifiers, getUserId } from "../../utils"
+import { getCurrentUserId, getUserId } from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -9,29 +9,8 @@ import IGroup from "../../interfaces/group"
 import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
-function get_current_user(res: Response) {
-  const { user } = res.locals
-  return user
-}
-
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  const identifier = req.params.user_id
-  if (!identifier) throw createHttpError(400, "User ID not provided")
-
-  const currentUser = get_current_user(res)
-  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
-
-  // 1. If the param matches ANY identifier of the current user, it's self
-  const isSelf =
-    identifier === "self" || currentUserIdentifiers.includes(identifier)
-
-  const targetUser = isSelf
-    ? currentUser
-    : await fetchUserData(identifier, req.headers.authorization)
-
-  // 2. configured ID always used for DB queries
-  const user_id = getUserId(targetUser)
-
+  const user_id = await getUserId(req, res)
   const { year } = req.query as any
 
   const query: any = { user_id }
@@ -67,7 +46,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   total_of_users = count
 
   const user_ids = users.map((user: IUser) => ({
-    user_id: getUserId(user),
+    user_id: getCurrentUserId(user),
   }))
 
   if (!user_ids.length)
@@ -89,7 +68,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   )
 
   const output = users.map((user: IGroup) => {
-    const user_id = getUserId(user)
+    const user_id = getCurrentUserId(user)
     if (!user_id) throw "User has no ID"
     const allocatons = allocations_mapping[user_id] || []
 
@@ -171,19 +150,7 @@ export const create_allocation = async (req: Request, res: Response) => {
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
-  const currentUser = get_current_user(res)
-  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
-
-  // 1. If the param matches ANY identifier of the current user, it's self
-  const isSelf =
-    identifier === "self" || currentUserIdentifiers.includes(identifier)
-
-  const targetUser = isSelf
-    ? currentUser
-    : await fetchUserData(identifier, req.headers.authorization)
-
-  // 2. configured ID always used for DB queries
-  const user_id = getUserId(targetUser)
+  const user_id = await getUserId(req, res)
   const allocation_properties = {
     year,
     user_id,

@@ -1,7 +1,7 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { fetchUserData, getAllUserIdentifiers, getUserId } from "../../utils"
+import { getCurrentUserId, getUserId } from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
@@ -14,28 +14,8 @@ import { Request, Response } from "express"
 
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
-function get_current_user(res: Response) {
-  const { user } = res.locals
-  return user
-}
-
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  const identifier = req.params.user_id
-  if (!identifier) throw createHttpError(400, "User ID not provided")
-
-  const currentUser = get_current_user(res)
-  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
-
-  // 1. If the param matches ANY identifier of the current user, it's self
-  const isSelf =
-    identifier === "self" || currentUserIdentifiers.includes(identifier)
-
-  const targetUser = isSelf
-    ? currentUser
-    : await fetchUserData(identifier, req.headers.authorization)
-
-  // 2. configured ID always used for DB queries
-  const user_id = getUserId(targetUser)
+  const user_id = await getUserId(req, res)
 
   const year = Number((req.query as any).year) || new Date().getFullYear()
   const start = (req.query as any).start_date
@@ -57,9 +37,6 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 }
 
 export const create_entry = async (req: Request, res: Response) => {
-  const identifier = req.params.user_id
-  if (!identifier) throw createHttpError(400, "User ID not provided")
-
   const {
     date,
     type = "有休",
@@ -73,21 +50,7 @@ export const create_entry = async (req: Request, res: Response) => {
 
   if (!date) throw createHttpError(400, "Date not provided")
 
-  // Determine if it's the same user
-  const currentUser = get_current_user(res)
-  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
-
-  // 1. If the param matches ANY identifier of the current user, it's self
-  const isSelf =
-    identifier === "self" || currentUserIdentifiers.includes(identifier)
-
-  const targetUser = isSelf
-    ? currentUser
-    : await fetchUserData(identifier, req.headers.authorization)
-
-  // 2. configured ID always used for DB queries
-  const user_id = getUserId(targetUser)
-
+  const user_id = await getUserId(req, res)
   const entry = await Entry.findOneAndUpdate(
     { user_id, date },
     {
@@ -271,7 +234,9 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
-  const user_ids = users.map((user: IUser) => ({ user_id: getUserId(user) }))
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getCurrentUserId(user),
+  }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
@@ -306,7 +271,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
   )
 
   const items = users.map((user: IGroup) => {
-    const user_id = getUserId(user)
+    const user_id = getCurrentUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
     const allocations = allocations_mapping[user_id] || null
@@ -359,7 +324,9 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
-  const user_ids = users.map((user: IUser) => ({ user_id: getUserId(user) }))
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getCurrentUserId(user),
+  }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Workplace ${workplace_id} appears to be empty`)
@@ -394,7 +361,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
   )
 
   const items = users.map((user: IUser) => {
-    const user_id = getUserId(user)
+    const user_id = getCurrentUserId(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
     const allocations = allocations_mapping[user_id] || null

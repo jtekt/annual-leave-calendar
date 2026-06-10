@@ -1,13 +1,14 @@
 import createHttpError from "http-errors"
 import IUser from "./interfaces/user"
 import axios from "axios"
+import { Request, Response } from "express"
 
-const { USER_MANAGER_API_URL, IDENTIFIER_FIELD = "_id" } = process.env
+const { USER_MANAGER_API_URL, IDENTIFIER_FIELD = "_id,username" } = process.env
 const identifierFields = IDENTIFIER_FIELD.split(",")
   .map((f) => f.trim())
   .filter(Boolean)
 
-export const getUserId = (user: IUser): string => {
+export const getCurrentUserId = (user: IUser): string => {
   for (const field of identifierFields) {
     const fromUser = user[field]
     if (fromUser) return fromUser
@@ -30,6 +31,25 @@ export const getAllUserIdentifiers = (user: IUser): string[] => {
   }
 
   return values
+}
+
+export const getUserId = async (req: Request, res: Response) => {
+  const identifier = req.params.user_id
+  if (!identifier) throw createHttpError(400, "User ID not provided")
+
+  const currentUser = res.locals.user as IUser
+  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
+
+  // 1. If the param matches ANY identifier of the current user, it's self
+  const isSelf =
+    identifier === "self" || currentUserIdentifiers.includes(identifier)
+
+  const targetUser = isSelf
+    ? currentUser
+    : await fetchUserData(identifier, req.headers.authorization)
+
+  // 2. configured ID always used for DB queries
+  return getCurrentUserId(targetUser)
 }
 
 export const collectByKeys = <T>(

@@ -18,12 +18,12 @@ import {
 } from "../caldav"
 
 import Entry from "../models/entry"
-import { getAllUserIdentifiers, getUserId } from "../utils"
+import { getAllUserIdentifiers, getCurrentUserId } from "../utils"
 
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
 export const handleRoot = (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const identifier = getCurrentUserId(res.locals.user)
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
 
   const propMap: Record<string, string> = {
@@ -43,7 +43,7 @@ export const handleRoot = (req: Request, res: Response) => {
 // ─── Principals (/caldav/principals/:user/) ───────────────────────────────────
 
 export const handlePrincipalPropfind = (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const identifier = getCurrentUserId(res.locals.user)
   const encodedUser = encodeURIComponent(identifier)
   const principalHref = `/caldav/principals/${encodedUser}/`
   const calHomeHref = `/caldav/calendars/${encodedUser}/`
@@ -75,7 +75,7 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
   if (!identifiers.includes(requestedId)) {
     throw createHttpError(403, "Forbidden")
   }
-  const identifier = getUserId(user)
+  const identifier = getCurrentUserId(user)
 
   const depth = (req.headers["depth"] as string) ?? "0"
   const entries = await Entry.find({ user_id: identifier }).lean()
@@ -148,7 +148,7 @@ export const handleReport = async (req: Request, res: Response) => {
     throw createHttpError(403, "Forbidden")
   }
 
-  const identifier = getUserId(user)
+  const identifier = getCurrentUserId(user)
 
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const body = (req.body as string) ?? ""
@@ -271,7 +271,7 @@ export const handleEventPut = async (req: Request, res: Response) => {
   if (!identifiers.includes(requestedId)) {
     throw createHttpError(403, "Forbidden")
   }
-  const identifier = getUserId(user)
+  const identifier = getCurrentUserId(user)
 
   const parsed = parseIcal((req.body as string) ?? "")
   if (!parsed.date)
@@ -315,7 +315,7 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
   const entry = await findEntry(req, res)
   if (!entry) return res.status(404).send("Event not found")
 
-  const identifier = getUserId(res.locals.user)
+  const identifier = getCurrentUserId(res.locals.user)
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const eventHref = `${collHref}${encodeURIComponent(entryFilename(entry))}`
 
@@ -340,7 +340,7 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
 
 async function findEntry(req: Request, res: Response) {
   const uid = decodeURIComponent(req.params.filename).replace(/\.ics$/i, "")
-  const userId = getUserId(res.locals.user)
+  const userId = getCurrentUserId(res.locals.user)
   if (!/^[a-f0-9]{24}$/i.test(uid)) return null
   return Entry.findOne({
     user_id: userId,

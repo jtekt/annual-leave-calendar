@@ -1,31 +1,10 @@
 import Entry from "../../models/entry"
-import createHttpError from "http-errors"
-import { fetchUserData, getAllUserIdentifiers, getUserId } from "../../utils"
+import { getUserId } from "../../utils"
 import { get_user_allocations_by_year } from "../v1/allocations"
 import { Request, Response } from "express"
 
-function get_current_user(res: Response) {
-  const { user } = res.locals
-  return user
-}
-
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
-
-  const currentUser = get_current_user(res)
-  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
-
-  // 1. If the param matches ANY identifier of the current user, it's self
-  const isSelf =
-    identifier === "self" || currentUserIdentifiers.includes(identifier)
-
-  const targetUser = isSelf
-    ? currentUser
-    : await fetchUserData(identifier, req.headers.authorization)
-
-  // 2. configured ID always used for DB queries
-  const user_id = getUserId(targetUser)
+  const user_id = await getUserId(req, res)
   const {
     year = new Date().getFullYear(),
     start_date,
