@@ -3,9 +3,11 @@ import IUser from "./interfaces/user"
 import axios from "axios"
 
 const { USER_MANAGER_API_URL } = process.env
-export const getUserId = (user: IUser): string => {
-  const id = user._id || user.properties?._id
-  if (!id) throw new Error("User ID not found")
+export const getUserId = (user?: IUser): string => {
+  const id = user?._id || user?.properties?._id
+  if (!id) {
+    throw createHttpError(401, "User ID not found")
+  }
   return id
 }
 
