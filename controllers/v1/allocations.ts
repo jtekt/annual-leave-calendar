@@ -36,7 +36,7 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   const user_id = identifier === "self" ? getUserId(current_user) : identifier
 
   const query: any = { user_id }
-  if (year !== undefined) query.year = year
+  if (year) query.year = year
 
   const allocations = await Allocation.find(query).sort("year")
 
@@ -201,8 +201,8 @@ export const get_all_allocations = async (req: Request, res: Response) => {
   )
 
   const query: any = {}
-  if (year !== undefined) query.year = year
-  if (user_id !== undefined) query.user_id = user_id
+  if (year) query.year = year
+  if (user_id) query.user_id = user_id
 
   const allocations = await Allocation.find(query)
     .sort({ user_id, year })
