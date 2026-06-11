@@ -50,7 +50,7 @@ describe("/entries", () => {
         .post(`/users/self/entries`)
         .set("Authorization", `Bearer ${jwt}`)
 
-      expect(status).to.equal(500)
+      expect(status).to.equal(400)
     })
 
     it("Should prevent the creation of an entry for anonymous users", async () => {
