@@ -1,7 +1,10 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getCurrentUserId, getUserId } from "../../utils"
+import {
+  getUserIdFromUserObj,
+  getStableUserIdFromParamsUserId,
+} from "../../utils"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -10,7 +13,7 @@ import IAllocation from "../../interfaces/allocation"
 const { GROUP_MANAGER_API_URL } = process.env
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  const user_id = await getUserId(req, res)
+  const user_id = await getStableUserIdFromParamsUserId(req, res)
   const { year } = req.query as any
 
   const query: any = { user_id }
@@ -46,7 +49,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   total_of_users = count
 
   const user_ids = users.map((user: IUser) => ({
-    user_id: getCurrentUserId(user),
+    user_id: getUserIdFromUserObj(user),
   }))
 
   if (!user_ids.length)
@@ -68,7 +71,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   )
 
   const output = users.map((user: IGroup) => {
-    const user_id = getCurrentUserId(user)
+    const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw "User has no ID"
     const allocatons = allocations_mapping[user_id] || []
 
@@ -150,7 +153,7 @@ export const create_allocation = async (req: Request, res: Response) => {
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
-  const user_id = await getUserId(req, res)
+  const user_id = await getStableUserIdFromParamsUserId(req, res)
   const allocation_properties = {
     year,
     user_id,

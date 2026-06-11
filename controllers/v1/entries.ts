@@ -1,7 +1,10 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { getCurrentUserId, getUserId } from "../../utils"
+import {
+  getUserIdFromUserObj,
+  getStableUserIdFromParamsUserId,
+} from "../../utils"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
@@ -15,7 +18,7 @@ import { Request, Response } from "express"
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  const user_id = await getUserId(req, res)
+  const user_id = await getStableUserIdFromParamsUserId(req, res)
 
   const year = Number((req.query as any).year) || new Date().getFullYear()
   const start = (req.query as any).start_date
@@ -50,7 +53,7 @@ export const create_entry = async (req: Request, res: Response) => {
 
   if (!date) throw createHttpError(400, "Date not provided")
 
-  const user_id = await getUserId(req, res)
+  const user_id = await getStableUserIdFromParamsUserId(req, res)
   const entry = await Entry.findOneAndUpdate(
     { user_id, date },
     {
@@ -235,7 +238,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
   const user_ids = users.map((user: IUser) => ({
-    user_id: getCurrentUserId(user),
+    user_id: getUserIdFromUserObj(user),
   }))
 
   if (!user_ids.length)
@@ -271,7 +274,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
   )
 
   const items = users.map((user: IGroup) => {
-    const user_id = getCurrentUserId(user)
+    const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
     const allocations = allocations_mapping[user_id] || null
@@ -325,7 +328,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
   const user_ids = users.map((user: IUser) => ({
-    user_id: getCurrentUserId(user),
+    user_id: getUserIdFromUserObj(user),
   }))
 
   if (!user_ids.length)
@@ -361,7 +364,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
   )
 
   const items = users.map((user: IUser) => {
-    const user_id = getCurrentUserId(user)
+    const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
     const allocations = allocations_mapping[user_id] || null

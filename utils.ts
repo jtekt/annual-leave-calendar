@@ -8,7 +8,7 @@ const identifierFields = IDENTIFIER_FIELD.split(",")
   .map((f) => f.trim())
   .filter(Boolean)
 
-export const getCurrentUserId = (user: IUser): string => {
+export const getUserIdFromUserObj = (user: IUser): string => {
   for (const field of identifierFields) {
     const fromUser = user[field]
     if (fromUser) return fromUser
@@ -33,7 +33,10 @@ export const getAllUserIdentifiers = (user: IUser): string[] => {
   return values
 }
 
-export const getUserId = async (req: Request, res: Response) => {
+export const getStableUserIdFromParamsUserId = async (
+  req: Request, // TODO: this will be the id
+  res: Response // TODO: the IUSER
+) => {
   const identifier = req.params.user_id
   if (!identifier) throw createHttpError(400, "User ID not provided")
 
@@ -44,12 +47,19 @@ export const getUserId = async (req: Request, res: Response) => {
   const isSelf =
     identifier === "self" || currentUserIdentifiers.includes(identifier)
 
-  const targetUser = isSelf
-    ? currentUser
-    : await fetchUserData(identifier, req.headers.authorization)
+  if (isSelf) return getUserIdFromUserObj(currentUser)
 
-  // 2. configured ID always used for DB queries
-  return getCurrentUserId(targetUser)
+  return identifier
+  // TODO: Add compatibility layer to fetch user data from USER_MANAGER_API for non-self
+  //  identifiers if needed. This is required if we want to allow access to other users'
+  //  data by their username, email, etc.
+  // Currently, only self-access is supported, and the identifier param must match one of the current user's identifiers.
+  // const targetUser = isSelf
+  //   ? currentUser
+  //   : await fetchUserData(identifier, req.headers.authorization) // TODO: Make it configurable
+
+  // // 2. configured ID always used for DB queries
+  // return getUserIdFromUserObj(targetUser)
 }
 
 export const collectByKeys = <T>(
