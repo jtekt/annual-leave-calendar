@@ -10,7 +10,7 @@ function get_current_user(res: Response) {
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
+  let identifier = req.params.user_id as string | undefined
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id

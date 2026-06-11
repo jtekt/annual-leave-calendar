@@ -20,7 +20,7 @@ function get_current_user(res: Response) {
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  const identifier = req.params.user_id
+  const identifier = req.params.user_id as string | undefined
   if (!identifier) throw createHttpError(400, "User ID not provided")
 
   const currentUser = get_current_user(res)
@@ -46,7 +46,7 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 }
 
 export const create_entry = async (req: Request, res: Response) => {
-  const identifier = req.params.user_id
+  const identifier = req.params.user_id as string | undefined
   if (!identifier) throw createHttpError(400, "User ID not provided")
 
   const {
@@ -98,7 +98,7 @@ export const create_entries = async (req: Request, res: Response) => {
 }
 
 export const get_single_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  const _id = req.params._id as string | undefined
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
@@ -147,7 +147,7 @@ export const get_all_entries = async (req: Request, res: Response) => {
 }
 
 export const update_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  const _id = req.params._id as string | undefined
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
@@ -191,7 +191,7 @@ export const update_entries = async (req: Request, res: Response) => {
 }
 
 export const delete_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  const _id = req.params._id as string | undefined
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
@@ -200,7 +200,7 @@ export const delete_entry = async (req: Request, res: Response) => {
 }
 
 export const delete_entries = async (req: Request, res: Response) => {
-  const entryIds = req.query.ids as string[]
+  const entryIds = req.query.ids as string[] | undefined
 
   if (!entryIds) throw createHttpError(400, `_id not provided`)
 

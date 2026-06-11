@@ -15,7 +15,7 @@ function get_current_user(res: Response) {
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
+  let identifier = req.params.user_id as string | undefined
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   let current_user = get_current_user(res)
   const isSelf = identifier === "self" || identifier === current_user._id
@@ -158,7 +158,7 @@ export const create_allocation = async (req: Request, res: Response) => {
     reserve = { current_year_grants: 0, carried_over: 0 },
   } = req.body
 
-  let identifier: string | undefined = req.params.user_id
+  let identifier = req.params.user_id as string | undefined
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   if (!year) throw createHttpError(400, `Year not provided`)
 
@@ -189,7 +189,7 @@ export const create_allocation = async (req: Request, res: Response) => {
 }
 
 export const get_single_allocation = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  const _id = req.params._id as string | undefined
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
   const allocation = await Allocation.findById(_id)
@@ -228,7 +228,7 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 }
 
 export const update_allocation = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  const _id = req.params._id as string | undefined
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
@@ -238,7 +238,7 @@ export const update_allocation = async (req: Request, res: Response) => {
 }
 
 export const delete_allocation = async (req: Request, res: Response) => {
-  const { _id } = req.params
+  const _id = req.params._id as string | undefined
 
   if (!_id) throw createHttpError(400, `ID is not provided`)
 
