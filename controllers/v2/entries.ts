@@ -1,6 +1,6 @@
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { fetchUserData, getUserId } from "../../utils"
+import { getUserId } from "../../utils"
 import { get_user_allocations_by_year } from "../v1/allocations"
 import { Request, Response } from "express"
 
@@ -13,23 +13,19 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   let identifier = req.params.user_id as string | undefined
   if (!identifier) throw createHttpError(400, `User ID not provided`)
   let current_user = get_current_user(res)
-  const isSelf = identifier === "self" || identifier === current_user._id
+  const user_id = identifier === "self" ? getUserId(current_user) : identifier
 
-  if (!isSelf) {
-    current_user = await fetchUserData(identifier, req.headers.authorization)
-  }
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-  } = req.query as any
+  const year = Number(req.query.year ?? new Date().getFullYear())
+  const start_date = req.query.start_date
+    ? String(req.query.start_date)
+    : undefined
+  const end_date = req.query.end_date ? String(req.query.end_date) : undefined
 
   const start_of_date = start_date
     ? new Date(start_date)
     : new Date(`${year}/01/01`)
   const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
 
-  const user_id = getUserId(current_user)
   const query = {
     $and: [
       { user_id },

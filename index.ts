@@ -1,6 +1,7 @@
 import dotenv from "dotenv"
 dotenv.config()
 import express from "express"
+import qs from "qs"
 import cors from "cors"
 import promBundle from "express-prom-bundle"
 import { author, version } from "./package.json"
@@ -31,6 +32,9 @@ const corsOptions = {
 }
 
 const app = express()
+app.set("query parser", (str: string) =>
+  qs.parse(str, { arrayLimit: Infinity })
+)
 
 app.use(express.json())
 

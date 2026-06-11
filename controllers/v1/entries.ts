@@ -26,13 +26,13 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   const currentUser = get_current_user(res)
   const user_id = identifier === "self" ? getUserId(currentUser) : identifier
 
-  const year = Number((req.query as any).year) || new Date().getFullYear()
-  const start = (req.query as any).start_date
-    ? new Date((req.query as any).start_date)
+  const year = Number(req.query.year) || new Date().getFullYear()
+  const start = req.query.start_date
+    ? new Date(String(req.query.start_date))
     : new Date(`${year}-01-01`)
 
-  const end = (req.query as any).end_date
-    ? new Date((req.query as any).end_date)
+  const end = req.query.end_date
+    ? new Date(String(req.query.end_date))
     : new Date(`${year}-12-31`)
 
   const query = {
@@ -108,14 +108,17 @@ export const get_single_entry = async (req: Request, res: Response) => {
 }
 
 export const get_all_entries = async (req: Request, res: Response) => {
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-    user_ids,
-    limit = DEFAULT_BATCH_SIZE,
-    skip = 0,
-  } = req.query as any
+  const year = Number(req.query.year ?? new Date().getFullYear())
+  const start_date = req.query.start_date
+    ? String(req.query.start_date)
+    : undefined
+  const end_date = req.query.end_date ? String(req.query.end_date) : undefined
+  const user_ids = req.query.user_ids
+  const numericLimit = Math.max(
+    Number(req.query.limit ?? DEFAULT_BATCH_SIZE),
+    0
+  )
+  const numericSkip = Number(req.query.skip ?? 0)
 
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
@@ -125,12 +128,11 @@ export const get_all_entries = async (req: Request, res: Response) => {
   }
 
   if (user_ids) {
-    const ids = Array.isArray(user_ids) ? user_ids : String(user_ids).split(",")
+    const ids = Array.isArray(user_ids)
+      ? user_ids.map(String)
+      : String(user_ids).split(",")
     query.$or = ids.map((id) => ({ user_id: id }))
   }
-
-  const numericLimit = Math.max(Number(limit), 0)
-  const numericSkip = Number(skip)
 
   const entries = await Entry.find(query).skip(numericSkip).limit(numericLimit)
 
@@ -200,7 +202,12 @@ export const delete_entry = async (req: Request, res: Response) => {
 }
 
 export const delete_entries = async (req: Request, res: Response) => {
-  const entryIds = req.query.ids as string[] | undefined
+  const rawIds = req.query.ids
+  const entryIds = rawIds
+    ? Array.isArray(rawIds)
+      ? rawIds.map(String)
+      : String(rawIds).split(",")
+    : undefined
 
   if (!entryIds) throw createHttpError(400, `_id not provided`)
 
@@ -222,13 +229,13 @@ export const delete_entries = async (req: Request, res: Response) => {
 export const get_entries_of_group = async (req: Request, res: Response) => {
   const { group_id } = req.params
 
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-    limit = DEFAULT_BATCH_SIZE,
-    skip = 0,
-  } = req.query as any
+  const year = Number(req.query.year ?? new Date().getFullYear())
+  const start_date = req.query.start_date
+    ? String(req.query.start_date)
+    : undefined
+  const end_date = req.query.end_date ? String(req.query.end_date) : undefined
+  const limit = Number(req.query.limit ?? DEFAULT_BATCH_SIZE)
+  const skip = Number(req.query.skip ?? 0)
 
   let users: any[] = []
   let total_of_users = 0
@@ -307,13 +314,13 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 export const get_entries_of_workplace = async (req: Request, res: Response) => {
   const { workplace_id } = req.params
 
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-    limit = DEFAULT_BATCH_SIZE,
-    skip = 0,
-  } = req.query as any
+  const year = Number(req.query.year ?? new Date().getFullYear())
+  const start_date = req.query.start_date
+    ? String(req.query.start_date)
+    : undefined
+  const end_date = req.query.end_date ? String(req.query.end_date) : undefined
+  const limit = Number(req.query.limit ?? DEFAULT_BATCH_SIZE)
+  const skip = Number(req.query.skip ?? 0)
 
   let users: any[] = []
   let total_of_users = 0
