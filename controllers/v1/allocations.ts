@@ -2,11 +2,22 @@ import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
 import { getUserId } from "../../utils"
+import { validate } from "../../utils/validate"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
 import IGroup from "../../interfaces/group"
 import IAllocation from "../../interfaces/allocation"
+import {
+  AllocationUserParamsSchema,
+  AllocationIdParamsSchema,
+  AllocationGroupParamsSchema,
+  GetAllocationsOfUserQuerySchema,
+  GetAllocationsOfGroupQuerySchema,
+  GetAllAllocationsQuerySchema,
+  CreateAllocationBodySchema,
+} from "../../validation"
+
 const { GROUP_MANAGER_API_URL } = process.env
 
 function get_current_user(res: Response) {
@@ -15,13 +26,17 @@ function get_current_user(res: Response) {
 }
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  let identifier = req.params.user_id as string | undefined
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
-  let current_user = get_current_user(res)
+  const { user_id: identifier } = validate(
+    AllocationUserParamsSchema,
+    req.params
+  )
+  const { year } = validate(GetAllocationsOfUserQuerySchema, req.query)
+
+  const current_user = get_current_user(res)
   const user_id = identifier === "self" ? getUserId(current_user) : identifier
 
   const query: any = { user_id }
-  if (req.query.year) query.year = Number(req.query.year)
+  if (year) query.year = year
 
   const allocations = await Allocation.find(query).sort("year")
 
@@ -29,14 +44,11 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
 }
 
 export const get_allocations_of_group = async (req: Request, res: Response) => {
-  const { group_id } = req.params
-
-  const year = Number(req.query.year ?? new Date().getFullYear())
-  const limit = Number(req.query.limit ?? DEFAULT_BATCH_SIZE)
-  const skip = Number(req.query.skip ?? 0)
-
-  let users: any[]
-  let total_of_users: number
+  const { group_id } = validate(AllocationGroupParamsSchema, req.params)
+  const { year, limit, skip } = validate(
+    GetAllocationsOfGroupQuerySchema,
+    req.query
+  )
 
   const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
   const headers = { authorization: req.headers.authorization }
@@ -47,8 +59,8 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
 
   const { data } = await axios.get(url, { headers, params })
   const { items, count } = data
-  users = items
-  total_of_users = count
+  const users: any[] = items
+  const total_of_users: number = count
 
   const user_ids = users.map((user: IUser) => ({
     user_id: getUserId(user),
@@ -145,17 +157,16 @@ export const get_user_array_allocations_by_year = async (
 }
 
 export const create_allocation = async (req: Request, res: Response) => {
-  const {
-    year,
-    leaves = { current_year_grants: 0, carried_over: 0 },
-    reserve = { current_year_grants: 0, carried_over: 0 },
-  } = req.body
+  const { user_id: identifier } = validate(
+    AllocationUserParamsSchema,
+    req.params
+  )
+  const { year, leaves, reserve } = validate(
+    CreateAllocationBodySchema,
+    req.body
+  )
 
-  let identifier = req.params.user_id as string | undefined
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
-  if (!year) throw createHttpError(400, `Year not provided`)
-
-  let current_user = get_current_user(res)
+  const current_user = get_current_user(res)
   const user_id = identifier === "self" ? getUserId(current_user) : identifier
   const allocation_properties = {
     year,
@@ -177,18 +188,17 @@ export const create_allocation = async (req: Request, res: Response) => {
 }
 
 export const get_single_allocation = async (req: Request, res: Response) => {
-  const { _id } = req.params
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+  const { _id } = validate(AllocationIdParamsSchema, req.params)
 
   const allocation = await Allocation.findById(_id)
   res.send(allocation)
 }
 
 export const get_all_allocations = async (req: Request, res: Response) => {
-  const year = req.query.year ? Number(req.query.year) : undefined
-  const user_id = req.query.user_id ? String(req.query.user_id) : undefined
-  const limit = Number(req.query.limit ?? DEFAULT_BATCH_SIZE)
-  const skip = Number(req.query.skip ?? 0)
+  const { year, user_id, limit, skip } = validate(
+    GetAllAllocationsQuerySchema,
+    req.query
+  )
 
   const query: any = {}
   if (year) query.year = year
@@ -214,9 +224,7 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 }
 
 export const update_allocation = async (req: Request, res: Response) => {
-  const _id = req.params._id as string | undefined
-
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+  const { _id } = validate(AllocationIdParamsSchema, req.params)
 
   const result = await Allocation.updateOne({ _id }, req.body)
 
@@ -224,9 +232,7 @@ export const update_allocation = async (req: Request, res: Response) => {
 }
 
 export const delete_allocation = async (req: Request, res: Response) => {
-  const _id = req.params._id as string | undefined
-
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+  const { _id } = validate(AllocationIdParamsSchema, req.params)
 
   const result = await Allocation.deleteOne({ _id })
 
