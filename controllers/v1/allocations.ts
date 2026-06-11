@@ -16,7 +16,7 @@ import {
   GetAllocationsOfGroupQuerySchema,
   GetAllAllocationsQuerySchema,
   CreateAllocationBodySchema,
-} from "../../validation"
+} from "../../validation/allocations"
 
 const { GROUP_MANAGER_API_URL } = process.env
 

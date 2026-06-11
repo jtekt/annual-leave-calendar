@@ -22,7 +22,7 @@ import {
   CreateEntryBodySchema,
   CreateEntriesBodySchema,
   UpdateEntriesBodySchema,
-} from "../../validation"
+} from "../../validation/entries"
 
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 

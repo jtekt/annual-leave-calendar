@@ -6,7 +6,7 @@ import { Request, Response } from "express"
 import {
   EntryUserParamsSchema,
   GetEntriesOfUserQuerySchema,
-} from "../../validation"
+} from "../../validation/entries"
 
 function get_current_user(res: Response) {
   const { user } = res.locals
