@@ -45,7 +45,7 @@ describe("/entries", () => {
       expect(status).to.equal(200)
     })
 
-    it("Should prevent the creation of an entry without date", async () => {
+    it("Should prevent the creation of an entry without data", async () => {
       const { status } = await request(app)
         .post(`/users/self/entries`)
         .set("Authorization", `Bearer ${jwt}`)
@@ -56,7 +56,7 @@ describe("/entries", () => {
     it("Should prevent the creation of an entry for anonymous users", async () => {
       const { status } = await request(app).post(`/users/self/entries`)
 
-      expect(status).to.equal(403)
+      expect(status).to.equal(401)
     })
   })
 

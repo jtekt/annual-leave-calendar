@@ -2,15 +2,27 @@ import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
 import { getUserId } from "../../utils"
+import { validate } from "../../utils/validate"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
 import IUser from "../../interfaces/user"
 import IAllocation from "../../interfaces/allocation"
 import IGroup from "../../interfaces/group"
 import { get_user_array_allocations_by_year } from "./allocations"
-
-import { TOTAL_HEADER, DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
+import {
+  EntryUserParamsSchema,
+  EntryIdParamsSchema,
+  EntryGroupParamsSchema,
+  EntryWorkplaceParamsSchema,
+  GetEntriesOfUserQuerySchema,
+  GetAllEntriesQuerySchema,
+  GetEntriesOfGroupQuerySchema,
+  DeleteEntriesQuerySchema,
+  CreateEntryBodySchema,
+  CreateEntriesBodySchema,
+  UpdateEntriesBodySchema,
+} from "../../validation/entries"
 
 const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
@@ -20,20 +32,20 @@ function get_current_user(res: Response) {
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  const identifier = req.params.user_id
-  if (!identifier) throw createHttpError(400, "User ID not provided")
+  const { user_id: identifier } = validate(EntryUserParamsSchema, req.params)
+  const { year, start_date, end_date } = validate(
+    GetEntriesOfUserQuerySchema,
+    req.query
+  )
 
   const currentUser = get_current_user(res)
   const user_id = identifier === "self" ? getUserId(currentUser) : identifier
 
-  const year = Number((req.query as any).year) || new Date().getFullYear()
-  const start = (req.query as any).start_date
-    ? new Date((req.query as any).start_date)
-    : new Date(`${year}-01-01`)
-
-  const end = (req.query as any).end_date
-    ? new Date((req.query as any).end_date)
-    : new Date(`${year}-12-31`)
+  const resolvedYear = year ?? new Date().getFullYear()
+  const start = start_date
+    ? new Date(start_date)
+    : new Date(`${resolvedYear}-01-01`)
+  const end = end_date ? new Date(end_date) : new Date(`${resolvedYear}-12-31`)
 
   const query = {
     user_id,
@@ -46,23 +58,19 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 }
 
 export const create_entry = async (req: Request, res: Response) => {
-  const identifier = req.params.user_id
-  if (!identifier) throw createHttpError(400, "User ID not provided")
-
+  const { user_id: identifier } = validate(EntryUserParamsSchema, req.params)
   const {
-    date,
-    type = "有休",
-    am = true,
-    pm = true,
-    taken = false,
-    refresh = false,
-    plus_one = false,
-    reserve = false,
-  } = req.body
+    date: dateStr,
+    type,
+    am,
+    pm,
+    taken,
+    refresh,
+    plus_one,
+    reserve,
+  } = validate(CreateEntryBodySchema, req.body)
+  const date = new Date(dateStr)
 
-  if (!date) throw createHttpError(400, "Date not provided")
-
-  // Determine if it's the same user
   const currentUser = get_current_user(res)
   const user_id = identifier === "self" ? getUserId(currentUser) : identifier
 
@@ -86,21 +94,14 @@ export const create_entry = async (req: Request, res: Response) => {
 }
 
 export const create_entries = async (req: Request, res: Response) => {
-  const entries = req.body
-
-  if (entries.some(({ user_id }: IEntry) => !user_id))
-    throw createHttpError(400, `User ID not provided`)
-  if (entries.some(({ date }: IEntry) => !date))
-    throw createHttpError(400, `User ID not provided`)
+  const entries = validate(CreateEntriesBodySchema, req.body)
 
   const result = await Entry.insertMany(entries)
   res.send(result)
 }
 
 export const get_single_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
-
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+  const { _id } = validate(EntryIdParamsSchema, req.params)
 
   const entry = await Entry.findById(_id)
 
@@ -108,15 +109,12 @@ export const get_single_entry = async (req: Request, res: Response) => {
 }
 
 export const get_all_entries = async (req: Request, res: Response) => {
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-    user_ids,
-    limit = DEFAULT_BATCH_SIZE,
-    skip = 0,
-  } = req.query as any
+  const { year, start_date, end_date, user_ids, limit, skip } = validate(
+    GetAllEntriesQuerySchema,
+    req.query
+  )
 
+  const numericLimit = Math.max(limit, 0)
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
 
@@ -124,15 +122,11 @@ export const get_all_entries = async (req: Request, res: Response) => {
     date: { $gte: start_of_date, $lte: end_of_date },
   }
 
-  if (user_ids) {
-    const ids = Array.isArray(user_ids) ? user_ids : String(user_ids).split(",")
-    query.$or = ids.map((id) => ({ user_id: id }))
+  if (user_ids && user_ids.length > 0) {
+    query.$or = user_ids.map((id) => ({ user_id: id }))
   }
 
-  const numericLimit = Math.max(Number(limit), 0)
-  const numericSkip = Number(skip)
-
-  const entries = await Entry.find(query).skip(numericSkip).limit(numericLimit)
+  const entries = await Entry.find(query).skip(skip).limit(numericLimit)
 
   const total = await Entry.countDocuments(query)
 
@@ -140,16 +134,14 @@ export const get_all_entries = async (req: Request, res: Response) => {
     start_of_date,
     end_of_date,
     limit: numericLimit,
-    skip: numericSkip,
+    skip,
     total,
     entries,
   })
 }
 
 export const update_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
-
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+  const { _id } = validate(EntryIdParamsSchema, req.params)
 
   const result = await Entry.updateOne({ _id }, req.body)
 
@@ -157,20 +149,15 @@ export const update_entry = async (req: Request, res: Response) => {
 }
 
 export const update_entries = async (req: Request, res: Response) => {
-  const entries = req.body
+  const entries = validate(UpdateEntriesBodySchema, req.body)
 
-  if (entries.some(({ _id }: IEntry) => !_id))
-    throw createHttpError(400, `_id not provided`)
-  if (entries.some(({ type }: IEntry) => !type))
-    throw createHttpError(400, `type not provided`)
+  const bulkOps = entries.map((entry) => {
+    const { _id, type } = entry
 
-  const bulkOps = entries.map((entry: IEntry) => {
-    const { type } = entry
-
-    let opts = {
+    return {
       updateOne: {
         filter: {
-          _id: mongoose.Types.ObjectId(entry._id),
+          _id: mongoose.Types.ObjectId(_id),
         },
         update: {
           $set: {
@@ -179,8 +166,6 @@ export const update_entries = async (req: Request, res: Response) => {
         },
       },
     }
-
-    return opts
   })
 
   // Warning: bulkWrite does not apply validation
@@ -191,18 +176,14 @@ export const update_entries = async (req: Request, res: Response) => {
 }
 
 export const delete_entry = async (req: Request, res: Response) => {
-  const { _id } = req.params
-
-  if (!_id) throw createHttpError(400, `ID is not provided`)
+  const { _id } = validate(EntryIdParamsSchema, req.params)
 
   const result = await Entry.deleteOne({ _id })
   res.send(result)
 }
 
 export const delete_entries = async (req: Request, res: Response) => {
-  const entryIds = req.query.ids as string[]
-
-  if (!entryIds) throw createHttpError(400, `_id not provided`)
+  const { ids: entryIds } = validate(DeleteEntriesQuerySchema, req.query)
 
   const bulkOps = entryIds.map((_id) => ({
     deleteOne: {
@@ -213,22 +194,16 @@ export const delete_entries = async (req: Request, res: Response) => {
   }))
 
   // Warning: bulkWrite does not apply validation
-  // Could consider using a for loop and updateOne with upsert
-  // However, this would seriously impact performance
   const result = await Entry.collection.bulkWrite(bulkOps)
   res.send(result)
 }
 
 export const get_entries_of_group = async (req: Request, res: Response) => {
-  const { group_id } = req.params
-
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-    limit = DEFAULT_BATCH_SIZE,
-    skip = 0,
-  } = req.query as any
+  const { group_id } = validate(EntryGroupParamsSchema, req.params)
+  const { year, start_date, end_date, limit, skip } = validate(
+    GetEntriesOfGroupQuerySchema,
+    req.query
+  )
 
   let users: any[] = []
   let total_of_users = 0
@@ -305,15 +280,11 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 }
 
 export const get_entries_of_workplace = async (req: Request, res: Response) => {
-  const { workplace_id } = req.params
-
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-    limit = DEFAULT_BATCH_SIZE,
-    skip = 0,
-  } = req.query as any
+  const { workplace_id } = validate(EntryWorkplaceParamsSchema, req.params)
+  const { year, start_date, end_date, limit, skip } = validate(
+    GetEntriesOfGroupQuerySchema,
+    req.query
+  )
 
   let users: any[] = []
   let total_of_users = 0
