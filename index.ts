@@ -21,6 +21,7 @@ const {
   APP_PORT = 80,
   GROUP_MANAGER_API_URL = "UNDEFINED",
   USER_MANAGER_API_URL,
+  IDENTIFICATON_URL,
 } = process.env
 
 const promOptions = { includeMethod: true, includePath: true }
@@ -52,7 +53,7 @@ app.get("/", (req: Request, res: Response) => {
     author,
     version,
     auth: {
-      identification_url: USER_MANAGER_API_URL || "Unset",
+      identification_url: IDENTIFICATON_URL || "Unset",
     },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     user_manager_api_url: USER_MANAGER_API_URL || "Unset",

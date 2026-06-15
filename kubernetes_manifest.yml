@@ -22,6 +22,8 @@ spec:
           env:
             - name: USER_MANAGER_API_URL
               value: http://employee-manager
+            - name: IDENTIFICATION_URL
+              value: http://employee-manager/v3/users/self
 ---
 apiVersion: v1
 kind: Service

@@ -4,18 +4,16 @@ import middleware, {
 import createHttpError from "http-errors"
 import { Request, Response, NextFunction, RequestHandler } from "express"
 
-const { USER_MANAGER_API_URL } = process.env
+const { IDENTIFICATION_URL } = process.env
 
 export const identificationMiddleware = () => {
-  if (!USER_MANAGER_API_URL)
-    throw createHttpError(400, `USER_MANAGER_API_URL not provided`)
+  if (!IDENTIFICATION_URL)
+    throw createHttpError(400, `IDENTIFICATION_URL not provided`)
 
-  const url = `${USER_MANAGER_API_URL}/v3/users/self`
-  console.log("Using USER_MANAGER_API_URL:", url)
   const options: Options = {
     strategies: {
       identification: {
-        url,
+        url: IDENTIFICATION_URL,
       },
     },
   }
