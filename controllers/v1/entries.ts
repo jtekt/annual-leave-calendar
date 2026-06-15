@@ -76,7 +76,8 @@ export const create_entry = async (req: Request, res: Response) => {
     plus_one,
     reserve,
   } = validate(CreateEntryBodySchema, req.body)
-  const date = new Date(dateStr)
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
 
   const currentUser = get_current_user(res)
   const user_id = await getStableUserIdFromParamsUserId(
