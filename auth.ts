@@ -47,6 +47,9 @@ export const caldavMiddleware = (): RequestHandler => {
     }
 
     const secret = decoded.slice(colonIdx + 1) // JWT or API key
+
+    // Save headers before identificationMiddleware strips them — CalDAV handlers
+    // need Depth, Content-Type, etc. after auth completes.
     const savedHeaders = { ...req.headers }
     const looksLikeJwt = secret.split(".").length === 3
 
