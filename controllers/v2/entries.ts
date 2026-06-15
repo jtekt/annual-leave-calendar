@@ -1,5 +1,5 @@
 import Entry from "../../models/entry"
-import { getUserId } from "../../utils"
+import { getStableUserIdFromParamsUserId } from "../../utils"
 import { validate } from "../../utils/validate"
 import { get_user_allocations_by_year } from "../v1/allocations"
 import { Request, Response } from "express"
@@ -21,7 +21,11 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   )
 
   const current_user = get_current_user(res)
-  const user_id = identifier === "self" ? getUserId(current_user) : identifier
+  const user_id = await getStableUserIdFromParamsUserId(
+    current_user,
+    identifier,
+    req.headers.authorization
+  )
 
   const resolvedYear = year ?? new Date().getFullYear()
   const start_of_date = start_date

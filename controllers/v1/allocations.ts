@@ -1,7 +1,10 @@
 import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
-import { getUserId } from "../../utils"
+import {
+  getStableUserIdFromParamsUserId,
+  getUserIdFromUserObj,
+} from "../../utils"
 import { validate } from "../../utils/validate"
 import { DEFAULT_BATCH_SIZE } from "../../constants"
 import { Request, Response } from "express"
@@ -33,7 +36,11 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   const { year } = validate(GetAllocationsOfUserQuerySchema, req.query)
 
   const current_user = get_current_user(res)
-  const user_id = identifier === "self" ? getUserId(current_user) : identifier
+  const user_id = await getStableUserIdFromParamsUserId(
+    current_user,
+    identifier,
+    req.headers.authorization
+  )
 
   const query: any = { user_id }
   if (year) query.year = year
@@ -63,7 +70,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   const total_of_users: number = count
 
   const user_ids = users.map((user: IUser) => ({
-    user_id: getUserId(user),
+    user_id: getUserIdFromUserObj(user),
   }))
 
   if (!user_ids.length)
@@ -85,7 +92,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   )
 
   const output = users.map((user: IGroup) => {
-    const user_id = getUserId(user)
+    const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw "User has no ID"
     const allocatons = allocations_mapping[user_id] || []
 
@@ -167,7 +174,12 @@ export const create_allocation = async (req: Request, res: Response) => {
   )
 
   const current_user = get_current_user(res)
-  const user_id = identifier === "self" ? getUserId(current_user) : identifier
+  const user_id = await getStableUserIdFromParamsUserId(
+    current_user,
+    identifier,
+    req.headers.authorization
+  )
+
   const allocation_properties = {
     year,
     user_id,
