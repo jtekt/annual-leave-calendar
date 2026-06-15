@@ -58,7 +58,7 @@ describe("/allocations", () => {
     it("Should prevent the creation of an allocation for anonymous users", async () => {
       const { status } = await request(app).post(`/users/self/allocations`)
 
-      expect(status).to.equal(403)
+      expect(status).to.equal(401)
     })
   })
 

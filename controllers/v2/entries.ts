@@ -1,8 +1,12 @@
 import Entry from "../../models/entry"
-import createHttpError from "http-errors"
-import { fetchUserData, getUserId } from "../../utils"
+import { getUserId } from "../../utils"
+import { validate } from "../../utils/validate"
 import { get_user_allocations_by_year } from "../v1/allocations"
 import { Request, Response } from "express"
+import {
+  EntryUserParamsSchema,
+  GetEntriesOfUserQuerySchema,
+} from "../../validation/entries"
 
 function get_current_user(res: Response) {
   const { user } = res.locals
@@ -10,26 +14,23 @@ function get_current_user(res: Response) {
 }
 
 export const get_entries_of_user = async (req: Request, res: Response) => {
-  let identifier: string | undefined = req.params.user_id
-  if (!identifier) throw createHttpError(400, `User ID not provided`)
-  let current_user = get_current_user(res)
-  const isSelf = identifier === "self" || identifier === current_user._id
+  const { user_id: identifier } = validate(EntryUserParamsSchema, req.params)
+  const { year, start_date, end_date } = validate(
+    GetEntriesOfUserQuerySchema,
+    req.query
+  )
 
-  if (!isSelf) {
-    current_user = await fetchUserData(identifier, req.headers.authorization)
-  }
-  const {
-    year = new Date().getFullYear(),
-    start_date,
-    end_date,
-  } = req.query as any
+  const current_user = get_current_user(res)
+  const user_id = identifier === "self" ? getUserId(current_user) : identifier
 
+  const resolvedYear = year ?? new Date().getFullYear()
   const start_of_date = start_date
     ? new Date(start_date)
-    : new Date(`${year}/01/01`)
-  const end_of_date = end_date ? new Date(end_date) : new Date(`${year}/12/31`)
+    : new Date(`${resolvedYear}/01/01`)
+  const end_of_date = end_date
+    ? new Date(end_date)
+    : new Date(`${resolvedYear}/12/31`)
 
-  const user_id = getUserId(current_user)
   const query = {
     $and: [
       { user_id },
@@ -41,7 +42,7 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
 
   const entries = await Entry.find(query).sort("date")
 
-  const allocations = await get_user_allocations_by_year(year, user_id)
+  const allocations = await get_user_allocations_by_year(resolvedYear, user_id)
 
   res.send({ entries, allocations })
 }

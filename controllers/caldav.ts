@@ -69,8 +69,8 @@ export const handlePrincipalPropfind = (req: Request, res: Response) => {
 
 export const handleCalendarPropfind = async (req: Request, res: Response) => {
   const identifier = getUserId(res.locals.user)
-
-  if (decodeURIComponent(req.params.user) !== identifier)
+  let user = req.params.user as string | undefined
+  if (user && decodeURIComponent(user) !== identifier)
     throw createHttpError(403, "Forbidden")
 
   const depth = (req.headers["depth"] as string) ?? "0"
@@ -138,8 +138,8 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
 
 export const handleReport = async (req: Request, res: Response) => {
   const identifier = getUserId(res.locals.user)
-
-  if (decodeURIComponent(req.params.user) !== identifier)
+  const user = req.params.user as string | undefined
+  if (user && decodeURIComponent(user) !== identifier)
     throw createHttpError(403, "Forbidden")
 
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
@@ -257,8 +257,8 @@ export const handleEventGet = async (req: Request, res: Response) => {
 
 export const handleEventPut = async (req: Request, res: Response) => {
   const identifier = getUserId(res.locals.user)
-
-  if (decodeURIComponent(req.params.user) !== identifier)
+  const user = req.params.user as string | undefined
+  if (user && decodeURIComponent(user) !== identifier)
     throw createHttpError(403, "Forbidden")
 
   const parsed = parseIcal((req.body as string) ?? "")
@@ -327,8 +327,11 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
 // ─── Shared helper ────────────────────────────────────────────────────────────
 
 async function findEntry(req: Request, res: Response) {
-  const uid = decodeURIComponent(req.params.filename).replace(/\.ics$/i, "")
   const userId = getUserId(res.locals.user)
+  const filename = req.params.filename as string | undefined
+  if (!filename) return null
+
+  const uid = decodeURIComponent(filename).replace(/\.ics$/i, "")
   if (!/^[a-f0-9]{24}$/i.test(uid)) return null
   return Entry.findOne({
     user_id: userId,

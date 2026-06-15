@@ -1,4 +1,6 @@
-import legacyAuth from "@jtekt/express-account-manager-identification-middleware"
+import middleware, {
+  type Options,
+} from "@jtekt/express-authentication-middleware"
 import createHttpError from "http-errors"
 import { Request, Response, NextFunction, RequestHandler } from "express"
 
@@ -10,19 +12,14 @@ export const identificationMiddleware = () => {
 
   const url = `${USER_MANAGER_API_URL}/v3/users/self`
   console.log("Using USER_MANAGER_API_URL:", url)
-
-  const legacy = legacyAuth({ url })
-
-  return (req: Request, res: Response, next: NextFunction) => {
-    const safeHeaders: { [key: string]: string } = {}
-    if (req.headers.authorization) {
-      safeHeaders.authorization = req.headers.authorization as string
-    }
-    safeHeaders.accept = "application/json"
-    req.headers = safeHeaders
-
-    return legacy(req, res, next)
+  const options: Options = {
+    strategies: {
+      identification: {
+        url,
+      },
+    },
   }
+  return middleware(options)
 }
 
 /**
@@ -49,10 +46,20 @@ export const caldavMiddleware = (): RequestHandler => {
       return next(createHttpError(401, "Invalid credentials"))
     }
 
+    const secret = decoded.slice(colonIdx + 1) // JWT or API key
+
     // Save headers before identificationMiddleware strips them — CalDAV handlers
     // need Depth, Content-Type, etc. after auth completes.
     const savedHeaders = { ...req.headers }
-    req.headers.authorization = `Bearer ${decoded.slice(colonIdx + 1)}`
+    const looksLikeJwt = secret.split(".").length === 3
+
+    if (looksLikeJwt) {
+      req.headers.authorization = `Bearer ${secret}`
+      delete req.headers["x-api-key"]
+    } else {
+      req.headers["x-api-key"] = secret
+      delete req.headers.authorization
+    }
 
     inner(req, res, (err?: any) => {
       req.headers = { ...savedHeaders }
