@@ -29,9 +29,11 @@ Similarily, the dedicated GUI for this application is developed independently an
 
 ## Environment variables
 
-| variable              | Description                                            |
-| --------------------- | ------------------------------------------------------ |
-| USER_MANAGER_API_URL  | URL of the authentication service                      |
-| GROUP_MANAGER_API_URL | URL of the group management service                    |
-| MONGODB_URL           | URL of the MongoDB instance                            |
-| MONGODB_DB            | Name of the MongoDB DB, defaults to 'nenkyuu_calendar' |
+| variable                | Description                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| IDENTIFICATION_URL      | URL of the authentication service                                                                                                |
+| GROUP_MANAGER_API_URL   | URL of the group management service                                                                                              |
+| MONGODB_URL             | URL of the MongoDB instance                                                                                                      |
+| MONGODB_DB              | Name of the MongoDB DB, defaults to 'nenkyuu_calendar'                                                                           |
+| USER_MANAGER_API_URL    | URL of the user management service used to resolve a user identifier to a user ID. Required when `RESOLVE_USER_IDENTIFIER=true`. |
+| RESOLVE_USER_IDENTIFIER | Optional. When set to `true`, user identifiers are resolved via `USER_MANAGER_API_URL`. Defaults to `false`.                     |
