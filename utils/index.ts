@@ -12,13 +12,15 @@ const identifierFields = IDENTIFIER_FIELDS.split(",")
   .map((f) => f.trim())
   .filter(Boolean)
 
-export const getUserIdFromUserObj = (user: IUser): string => {
-  for (const field of identifierFields) {
-    const fromUser = user[field]
-    if (fromUser) return fromUser
+export const getUserIdFromUserObj = (user: IUser | undefined): string => {
+  if (user) {
+    for (const field of identifierFields) {
+      const fromUser = user[field]
+      if (fromUser) return fromUser
 
-    const fromProps = user.properties?.[field]
-    if (fromProps) return fromProps
+      const fromProps = user.properties?.[field]
+      if (fromProps) return fromProps
+    }
   }
 
   throw createHttpError(
