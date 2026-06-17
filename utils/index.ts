@@ -2,13 +2,63 @@ import createHttpError from "http-errors"
 import IUser from "../interfaces/user"
 import axios from "axios"
 
-const { USER_MANAGER_API_URL } = process.env
-export const getUserId = (user?: IUser): string => {
-  const id = user?._id || user?.properties?._id
-  if (!id) {
-    throw createHttpError(401, "User ID not found")
+const {
+  USER_MANAGER_API_URL,
+  IDENTIFIER_FIELDS = "sub",
+  RESOLVE_USER_IDENTIFIER,
+} = process.env
+
+const identifierFields = IDENTIFIER_FIELDS.split(",")
+  .map((f) => f.trim())
+  .filter(Boolean)
+
+export const getUserIdFromUserObj = (user: IUser | undefined): string => {
+  if (user) {
+    for (const field of identifierFields) {
+      const fromUser = user[field]
+      if (fromUser) return fromUser
+
+      const fromProps = user.properties?.[field]
+      if (fromProps) return fromProps
+    }
   }
-  return id
+
+  throw createHttpError(
+    401,
+    "User ID not found using field(s): " + identifierFields.join(", ")
+  )
+}
+
+export const getAllUserIdentifiers = (user: IUser): string[] => {
+  const values: string[] = []
+
+  for (const field of identifierFields) {
+    const v = user[field] || user.properties?.[field]
+    if (v) values.push(String(v))
+  }
+
+  return values
+}
+
+export const getStableUserIdFromParamsUserId = async (
+  currentUser: IUser,
+  identifier: string,
+  authorization?: string
+) => {
+  const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
+  const isSelf =
+    identifier === "self" || currentUserIdentifiers.includes(identifier)
+  if (isSelf) return getUserIdFromUserObj(currentUser)
+  if (RESOLVE_USER_IDENTIFIER?.toLowerCase() !== "true") return identifier
+  try {
+    const userData = await fetchUserData(identifier, authorization)
+    return getUserIdFromUserObj(userData)
+  } catch (error: any) {
+    if (error?.status === 404) {
+      throw createHttpError(403, `No user found for identifier "${identifier}"`)
+    }
+    throw error
+  }
 }
 
 export const collectByKeys = <T>(
@@ -31,7 +81,7 @@ export const fetchUserData = async (
   try {
     const headers: Record<string, string> = {}
     if (authorization?.trim()) headers.Authorization = authorization
-    const res = await axios.get(`${USER_MANAGER_API_URL}/v3/users/${user_id}`, {
+    const res = await axios.get(`${USER_MANAGER_API_URL}/${user_id}`, {
       headers,
     })
     return res.data

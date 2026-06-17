@@ -18,12 +18,12 @@ import {
 } from "../caldav"
 
 import Entry from "../models/entry"
-import { getUserId } from "../utils"
+import { getUserIdFromUserObj } from "../utils"
 
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
 export const handleRoot = (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const identifier = getUserIdFromUserObj(res.locals.user)
   const principalHref = `/caldav/principals/${encodeURIComponent(identifier)}/`
 
   const propMap: Record<string, string> = {
@@ -43,7 +43,7 @@ export const handleRoot = (req: Request, res: Response) => {
 // ─── Principals (/caldav/principals/:user/) ───────────────────────────────────
 
 export const handlePrincipalPropfind = (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const identifier = getUserIdFromUserObj(res.locals.user)
   const encodedUser = encodeURIComponent(identifier)
   const principalHref = `/caldav/principals/${encodedUser}/`
   const calHomeHref = `/caldav/calendars/${encodedUser}/`
@@ -68,7 +68,7 @@ export const handlePrincipalPropfind = (req: Request, res: Response) => {
 // ─── Calendar collection (/caldav/calendars/:user/) ───────────────────────────
 
 export const handleCalendarPropfind = async (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const identifier = getUserIdFromUserObj(res.locals.user)
   let user = req.params.user as string | undefined
   if (user && decodeURIComponent(user) !== identifier)
     throw createHttpError(403, "Forbidden")
@@ -137,7 +137,7 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
 }
 
 export const handleReport = async (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const identifier = getUserIdFromUserObj(res.locals.user)
   const user = req.params.user as string | undefined
   if (user && decodeURIComponent(user) !== identifier)
     throw createHttpError(403, "Forbidden")
@@ -256,7 +256,7 @@ export const handleEventGet = async (req: Request, res: Response) => {
 }
 
 export const handleEventPut = async (req: Request, res: Response) => {
-  const identifier = getUserId(res.locals.user)
+  const identifier = getUserIdFromUserObj(res.locals.user)
   const user = req.params.user as string | undefined
   if (user && decodeURIComponent(user) !== identifier)
     throw createHttpError(403, "Forbidden")
@@ -303,7 +303,7 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
   const entry = await findEntry(req, res)
   if (!entry) return res.status(404).send("Event not found")
 
-  const identifier = getUserId(res.locals.user)
+  const identifier = getUserIdFromUserObj(res.locals.user)
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const eventHref = `${collHref}${encodeURIComponent(entryFilename(entry))}`
 
@@ -327,7 +327,7 @@ export const handleEventPropfind = async (req: Request, res: Response) => {
 // ─── Shared helper ────────────────────────────────────────────────────────────
 
 async function findEntry(req: Request, res: Response) {
-  const userId = getUserId(res.locals.user)
+  const userId = getUserIdFromUserObj(res.locals.user)
   const filename = req.params.filename as string | undefined
   if (!filename) return null
 
