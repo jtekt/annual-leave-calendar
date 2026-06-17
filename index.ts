@@ -15,12 +15,13 @@ import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
 import { TOTAL_HEADER } from "./constants"
-import { getUserId } from "./utils"
+import { getUserIdFromUserObj } from "./utils"
 
 const {
   APP_PORT = 80,
   GROUP_MANAGER_API_URL = "UNDEFINED",
   USER_MANAGER_API_URL,
+  IDENTIFICATON_URL,
 } = process.env
 
 const promOptions = { includeMethod: true, includePath: true }
@@ -52,7 +53,7 @@ app.get("/", (req: Request, res: Response) => {
     author,
     version,
     auth: {
-      identification_url: USER_MANAGER_API_URL || "Unset",
+      identification_url: IDENTIFICATON_URL || "Unset",
     },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     user_manager_api_url: USER_MANAGER_API_URL || "Unset",
@@ -75,7 +76,7 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   const route = req.route?.path || "unknown route"
 
   const { user } = res.locals
-  let current_user = getUserId(user)
+  let current_user = getUserIdFromUserObj(user)
   let { statusCode = 500, message = error } = error
   console.error(`${current_user} : [${method} | ${route}] Error: ${message}`)
   if (isNaN(statusCode) || statusCode > 600) statusCode = 500

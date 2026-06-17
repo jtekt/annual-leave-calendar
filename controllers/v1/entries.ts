@@ -1,7 +1,10 @@
 import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
-import { getUserId } from "../../utils"
+import {
+  getStableUserIdFromParamsUserId,
+  getUserIdFromUserObj,
+} from "../../utils"
 import { validate } from "../../utils/validate"
 import mongoose from "mongoose"
 import IEntry from "../../interfaces/entry"
@@ -39,7 +42,11 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   )
 
   const currentUser = get_current_user(res)
-  const user_id = identifier === "self" ? getUserId(currentUser) : identifier
+  const user_id = await getStableUserIdFromParamsUserId(
+    currentUser,
+    identifier,
+    req.headers.authorization
+  )
 
   const resolvedYear = year ?? new Date().getFullYear()
   const start = start_date
@@ -69,10 +76,15 @@ export const create_entry = async (req: Request, res: Response) => {
     plus_one,
     reserve,
   } = validate(CreateEntryBodySchema, req.body)
-  const date = new Date(dateStr)
+  const [y, m, d] = dateStr.split(/[-/]/).map(Number)
+  const date = new Date(Date.UTC(y, m - 1, d))
 
   const currentUser = get_current_user(res)
-  const user_id = identifier === "self" ? getUserId(currentUser) : identifier
+  const user_id = await getStableUserIdFromParamsUserId(
+    currentUser,
+    identifier,
+    req.headers.authorization
+  )
 
   const entry = await Entry.findOneAndUpdate(
     { user_id, date },
@@ -224,7 +236,9 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
-  const user_ids = users.map((user: IUser) => ({ user_id: getUserId(user) }))
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserIdFromUserObj(user),
+  }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Group ${group_id} appears to be empty`)
@@ -259,7 +273,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
   )
 
   const items = users.map((user: IGroup) => {
-    const user_id = getUserId(user)
+    const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
     const allocations = allocations_mapping[user_id] || null
@@ -308,7 +322,9 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
-  const user_ids = users.map((user: IUser) => ({ user_id: getUserId(user) }))
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserIdFromUserObj(user),
+  }))
 
   if (!user_ids.length)
     throw createHttpError(404, `Workplace ${workplace_id} appears to be empty`)
@@ -343,7 +359,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
   )
 
   const items = users.map((user: IUser) => {
-    const user_id = getUserId(user)
+    const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw "User has no ID"
     const entries = entries_mapping[user_id] || []
     const allocations = allocations_mapping[user_id] || null

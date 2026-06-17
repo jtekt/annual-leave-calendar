@@ -21,7 +21,11 @@ spec:
                 name: environment-variables
           env:
             - name: USER_MANAGER_API_URL
-              value: http://employee-manager
+              value: http://employee-manager/v3/users
+            - name: IDENTIFICATION_URL
+              value: http://employee-manager/v3/users/self
+            - name: IDENTIFIER_FIELDS
+              value: _id
 ---
 apiVersion: v1
 kind: Service
