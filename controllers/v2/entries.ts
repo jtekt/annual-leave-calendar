@@ -24,7 +24,7 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   const user_id = await getStableUserIdFromParamsUserId(
     current_user,
     identifier,
-    req.headers.authorization
+    req.headers
   )
 
   const resolvedYear = year ?? new Date().getFullYear()

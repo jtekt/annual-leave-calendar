@@ -2,6 +2,7 @@ import axios from "axios"
 import Entry from "../../models/entry"
 import createHttpError from "http-errors"
 import {
+  extractAuthHeaders,
   getStableUserIdFromParamsUserId,
   getUserIdFromUserObj,
 } from "../../utils"
@@ -45,7 +46,7 @@ export const get_entries_of_user = async (req: Request, res: Response) => {
   const user_id = await getStableUserIdFromParamsUserId(
     currentUser,
     identifier,
-    req.headers.authorization
+    req.headers
   )
 
   const resolvedYear = year ?? new Date().getFullYear()
@@ -83,7 +84,7 @@ export const create_entry = async (req: Request, res: Response) => {
   const user_id = await getStableUserIdFromParamsUserId(
     currentUser,
     identifier,
-    req.headers.authorization
+    req.headers
   )
 
   const entry = await Entry.findOneAndUpdate(
@@ -222,7 +223,7 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
 
   try {
     const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-    const headers = { authorization: req.headers.authorization }
+    const headers = extractAuthHeaders(req.headers)
     const params = { batch_size: limit, start_index: skip }
 
     const { data } = await axios.get(url, { headers, params })
@@ -305,7 +306,7 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
 
   try {
     const url = `${WORKPLACE_MANAGER_API_URL}/v2/workplaces/${workplace_id}/employees`
-    const headers = { authorization: req.headers.authorization }
+    const headers = extractAuthHeaders(req.headers)
     const params = { batch_size: limit, start_index: skip }
 
     const { data, headers: workplaceHeader } = await axios.get(url, {

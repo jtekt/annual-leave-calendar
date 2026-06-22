@@ -2,6 +2,7 @@ import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
 import {
+  extractAuthHeaders,
   getStableUserIdFromParamsUserId,
   getUserIdFromUserObj,
 } from "../../utils"
@@ -39,7 +40,7 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   const user_id = await getStableUserIdFromParamsUserId(
     current_user,
     identifier,
-    req.headers.authorization
+    req.headers
   )
 
   const query: any = { user_id }
@@ -58,7 +59,7 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   )
 
   const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-  const headers = { authorization: req.headers.authorization }
+  const headers = extractAuthHeaders(req.headers)
   const params = {
     batch_size: limit,
     start_index: skip,
@@ -177,7 +178,7 @@ export const create_allocation = async (req: Request, res: Response) => {
   const user_id = await getStableUserIdFromParamsUserId(
     current_user,
     identifier,
-    req.headers.authorization
+    req.headers
   )
 
   const allocation_properties = {

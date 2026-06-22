@@ -43,7 +43,7 @@ export const getAllUserIdentifiers = (user: IUser): string[] => {
 export const getStableUserIdFromParamsUserId = async (
   currentUser: IUser,
   identifier: string,
-  authorization?: string
+  reqHeaders: Record<string, any>
 ) => {
   const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
   const isSelf =
@@ -51,7 +51,7 @@ export const getStableUserIdFromParamsUserId = async (
   if (isSelf) return getUserIdFromUserObj(currentUser)
   if (RESOLVE_USER_IDENTIFIER?.toLowerCase() !== "true") return identifier
   try {
-    const userData = await fetchUserData(identifier, authorization)
+    const userData = await fetchUserData(identifier, reqHeaders)
     return getUserIdFromUserObj(userData)
   } catch (error: any) {
     if (error?.status === 404) {
@@ -76,11 +76,10 @@ export const collectByKeys = <T>(
 
 export const fetchUserData = async (
   user_id: string,
-  authorization?: string
+  reqHeaders: Record<string, any>
 ) => {
   try {
-    const headers: Record<string, string> = {}
-    if (authorization?.trim()) headers.Authorization = authorization
+    const headers = extractAuthHeaders(reqHeaders)
     const res = await axios.get(`${USER_MANAGER_API_URL}/${user_id}`, {
       headers,
     })
@@ -98,4 +97,22 @@ export const fetchUserData = async (
       throw createHttpError(400, "Failed to fetch from USER_MANAGER_API")
     }
   }
+}
+
+/**
+ * Extracts authentication headers from request
+ * Supports both authorization and x-api-key headers
+ */
+export function extractAuthHeaders(reqHeaders: Record<string, any>) {
+  const headers: Record<string, string> = {}
+
+  if (reqHeaders.authorization) {
+    headers["Authorization"] = reqHeaders.authorization
+  }
+
+  if (reqHeaders["x-api-key"]) {
+    headers["x-api-key"] = reqHeaders["x-api-key"] as string
+  }
+
+  return headers
 }
