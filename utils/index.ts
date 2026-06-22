@@ -1,12 +1,8 @@
 import createHttpError from "http-errors"
 import IUser from "../interfaces/user"
-import axios from "axios"
+import { fetchUserData } from "../services/members"
 
-const {
-  USER_MANAGER_API_URL,
-  IDENTIFIER_FIELDS = "sub",
-  RESOLVE_USER_IDENTIFIER,
-} = process.env
+const { IDENTIFIER_FIELDS = "sub", RESOLVE_USER_IDENTIFIER } = process.env
 
 const identifierFields = IDENTIFIER_FIELDS.split(",")
   .map((f) => f.trim())
@@ -73,31 +69,6 @@ export const collectByKeys = <T>(
     }
     return acc
   }, initial)
-
-export const fetchUserData = async (
-  user_id: string,
-  reqHeaders: Record<string, any>
-) => {
-  try {
-    const headers = extractAuthHeaders(reqHeaders)
-    const res = await axios.get(`${USER_MANAGER_API_URL}/${user_id}`, {
-      headers,
-    })
-    return res.data
-  } catch (error: any) {
-    const status = error?.response?.status ?? 500
-    const code = error?.code
-    if (status === 403 || status === 401) {
-      throw createHttpError(403, "Unauthorized to access USER_MANAGER_API")
-    } else if (status === 404) {
-      throw createHttpError(404, "User not found in USER_MANAGER_API")
-    } else if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
-      throw createHttpError(502, "USER_MANAGER_API is unreachable")
-    } else {
-      throw createHttpError(400, "Failed to fetch from USER_MANAGER_API")
-    }
-  }
-}
 
 /**
  * Extracts authentication headers from request

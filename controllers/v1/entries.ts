@@ -27,8 +27,10 @@ import {
   CreateEntriesBodySchema,
   UpdateEntriesBodySchema,
 } from "../../validation/entries"
-
-const { GROUP_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
+import {
+  fetchGroupMembers,
+  fetchWorkplaceEmployees,
+} from "../../services/members"
 
 function get_current_user(res: Response) {
   const { user } = res.locals
@@ -218,22 +220,12 @@ export const get_entries_of_group = async (req: Request, res: Response) => {
     req.query
   )
 
-  let users: any[] = []
-  let total_of_users = 0
-
-  try {
-    const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-    const headers = extractAuthHeaders(req.headers)
-    const params = { batch_size: limit, start_index: skip }
-
-    const { data } = await axios.get(url, { headers, params })
-    users = data.items
-    total_of_users = data.count
-  } catch (error: any) {
-    const status = error?.response?.status || 500
-    const msg = error?.response?.data || "Failed to query group members"
-    throw createHttpError(status, `${msg}: ${group_id}`)
-  }
+  const { users, total_of_users } = await fetchGroupMembers(
+    group_id,
+    req.headers,
+    limit,
+    skip
+  )
 
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
@@ -301,25 +293,12 @@ export const get_entries_of_workplace = async (req: Request, res: Response) => {
     req.query
   )
 
-  let users: any[] = []
-  let total_of_users = 0
-
-  try {
-    const url = `${WORKPLACE_MANAGER_API_URL}/v2/workplaces/${workplace_id}/employees`
-    const headers = extractAuthHeaders(req.headers)
-    const params = { batch_size: limit, start_index: skip }
-
-    const { data, headers: workplaceHeader } = await axios.get(url, {
-      headers,
-      params,
-    })
-    users = data
-    total_of_users = Number(workplaceHeader["x-total"])
-  } catch (error: any) {
-    const status = error?.response?.status || 500
-    const msg = error?.response?.data || "Failed to query workplace members"
-    throw createHttpError(status, `${msg}: ${workplace_id}`)
-  }
+  const { users, total_of_users } = await fetchWorkplaceEmployees(
+    workplace_id,
+    req.headers,
+    limit,
+    skip
+  )
 
   const start_of_date = new Date(start_date || `${year}/01/01`)
   const end_of_date = new Date(end_date || `${year}/12/31`)
