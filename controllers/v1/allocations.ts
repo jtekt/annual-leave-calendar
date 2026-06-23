@@ -2,6 +2,7 @@ import axios from "axios"
 import Allocation from "../../models/allocation"
 import createHttpError from "http-errors"
 import {
+  extractAuthHeaders,
   getStableUserIdFromParamsUserId,
   getUserIdFromUserObj,
 } from "../../utils"
@@ -20,8 +21,7 @@ import {
   GetAllAllocationsQuerySchema,
   CreateAllocationBodySchema,
 } from "../../validation/allocations"
-
-const { GROUP_MANAGER_API_URL } = process.env
+import { fetchGroupMembers } from "../../services/members"
 
 function get_current_user(res: Response) {
   const { user } = res.locals
@@ -39,7 +39,7 @@ export const get_allocations_of_user = async (req: Request, res: Response) => {
   const user_id = await getStableUserIdFromParamsUserId(
     current_user,
     identifier,
-    req.headers.authorization
+    req.headers
   )
 
   const query: any = { user_id }
@@ -57,17 +57,12 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
     req.query
   )
 
-  const url = `${GROUP_MANAGER_API_URL}/v3/groups/${group_id}/members`
-  const headers = { authorization: req.headers.authorization }
-  const params = {
-    batch_size: limit,
-    start_index: skip,
-  }
-
-  const { data } = await axios.get(url, { headers, params })
-  const { items, count } = data
-  const users: any[] = items
-  const total_of_users: number = count
+  const { users, total_of_users } = await fetchGroupMembers(
+    group_id,
+    req.headers,
+    limit,
+    skip
+  )
 
   const user_ids = users.map((user: IUser) => ({
     user_id: getUserIdFromUserObj(user),
@@ -177,7 +172,7 @@ export const create_allocation = async (req: Request, res: Response) => {
   const user_id = await getStableUserIdFromParamsUserId(
     current_user,
     identifier,
-    req.headers.authorization
+    req.headers
   )
 
   const allocation_properties = {

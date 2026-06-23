@@ -22,6 +22,7 @@ const {
   GROUP_MANAGER_API_URL = "UNDEFINED",
   USER_MANAGER_API_URL,
   IDENTIFICATON_URL,
+  WORKPLACE_MANAGER_API_URL,
 } = process.env
 
 const promOptions = { includeMethod: true, includePath: true }
@@ -57,6 +58,7 @@ app.get("/", (req: Request, res: Response) => {
     },
     group_manager_api_url: GROUP_MANAGER_API_URL,
     user_manager_api_url: USER_MANAGER_API_URL || "Unset",
+    workplace_manager_api_url: WORKPLACE_MANAGER_API_URL || "Unset",
     mongodb: {
       url: redactedConnectionString,
       connected: dbConnected(),

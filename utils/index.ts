@@ -1,12 +1,8 @@
 import createHttpError from "http-errors"
 import IUser from "../interfaces/user"
-import axios from "axios"
+import { fetchUserData } from "../services/members"
 
-const {
-  USER_MANAGER_API_URL,
-  IDENTIFIER_FIELDS = "sub",
-  RESOLVE_USER_IDENTIFIER,
-} = process.env
+const { IDENTIFIER_FIELDS = "sub", RESOLVE_USER_IDENTIFIER } = process.env
 
 const identifierFields = IDENTIFIER_FIELDS.split(",")
   .map((f) => f.trim())
@@ -43,7 +39,7 @@ export const getAllUserIdentifiers = (user: IUser): string[] => {
 export const getStableUserIdFromParamsUserId = async (
   currentUser: IUser,
   identifier: string,
-  authorization?: string
+  reqHeaders: Record<string, any>
 ) => {
   const currentUserIdentifiers = getAllUserIdentifiers(currentUser)
   const isSelf =
@@ -51,7 +47,7 @@ export const getStableUserIdFromParamsUserId = async (
   if (isSelf) return getUserIdFromUserObj(currentUser)
   if (RESOLVE_USER_IDENTIFIER?.toLowerCase() !== "true") return identifier
   try {
-    const userData = await fetchUserData(identifier, authorization)
+    const userData = await fetchUserData(identifier, reqHeaders)
     return getUserIdFromUserObj(userData)
   } catch (error: any) {
     if (error?.status === 404) {
@@ -74,28 +70,20 @@ export const collectByKeys = <T>(
     return acc
   }, initial)
 
-export const fetchUserData = async (
-  user_id: string,
-  authorization?: string
-) => {
-  try {
-    const headers: Record<string, string> = {}
-    if (authorization?.trim()) headers.Authorization = authorization
-    const res = await axios.get(`${USER_MANAGER_API_URL}/${user_id}`, {
-      headers,
-    })
-    return res.data
-  } catch (error: any) {
-    const status = error?.response?.status ?? 500
-    const code = error?.code
-    if (status === 403 || status === 401) {
-      throw createHttpError(403, "Unauthorized to access USER_MANAGER_API")
-    } else if (status === 404) {
-      throw createHttpError(404, "User not found in USER_MANAGER_API")
-    } else if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
-      throw createHttpError(502, "USER_MANAGER_API is unreachable")
-    } else {
-      throw createHttpError(400, "Failed to fetch from USER_MANAGER_API")
-    }
+/**
+ * Extracts authentication headers from request
+ * Supports both authorization and x-api-key headers
+ */
+export function extractAuthHeaders(reqHeaders: Record<string, any>) {
+  const headers: Record<string, string> = {}
+
+  if (reqHeaders.authorization) {
+    headers["Authorization"] = reqHeaders.authorization
   }
+
+  if (reqHeaders["x-api-key"]) {
+    headers["x-api-key"] = reqHeaders["x-api-key"] as string
+  }
+
+  return headers
 }
