@@ -18,6 +18,7 @@ export const getUserIdFromUserObj = (user: IUser | undefined): string => {
       if (fromProps) return fromProps
     }
   }
+  
 
   throw createHttpError(
     401,

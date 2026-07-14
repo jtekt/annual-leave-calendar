@@ -34,6 +34,7 @@ export const GetAllAllocationsQuerySchema = z.object({
 })
 
 // ─── Body ─────────────────────────────────────────────────────────────────────
+
 const LeaveGrantSchema = z.object({
   current_year_grants: z.coerce.number().default(0),
   carried_over: z.coerce.number().default(0),
@@ -53,4 +54,10 @@ export const CreateAllocationBodySchema = z.object({
     current_year_grants: 0,
     carried_over: 0,
   }),
+})
+
+export const UpdateAllocationBodySchema = z.object({
+  year: z.coerce.number().optional(),
+  leaves: LeaveGrantWithTargetSchema.partial().optional(),
+  reserve: LeaveGrantSchema.partial().optional(),
 })
