@@ -95,7 +95,7 @@ describe("/allocations", () => {
   describe("GET /groups/:group_id/allocations", () => {
     const { TEST_GROUP_ID } = process.env
 
-    it("Should include both 'allocations' and legacy 'allocatons' keys in each item", async () => {
+    it("Should return allocations under the correct key with no legacy typo key", async () => {
       const { status, body } = await request(app)
         .get(`/groups/${TEST_GROUP_ID}/allocations`)
         .set("Authorization", `Bearer ${jwt}`)
@@ -104,8 +104,7 @@ describe("/allocations", () => {
       expect(body.items).to.be.an("array")
       body.items.forEach((item: any) => {
         expect(item).to.have.property("allocations")
-        expect(item).to.have.property("allocatons")
-        expect(item.allocatons).to.deep.equal(item.allocations)
+        expect(item).to.not.have.property("allocatons")
       })
     })
   })

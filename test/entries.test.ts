@@ -97,7 +97,7 @@ describe("/entries", () => {
       expect(status).to.equal(404)
     })
 
-    it("Should include entries on the user object for backwards compatibility", async () => {
+    it("Should return entries only at item.entries, not duplicated on user object", async () => {
       const { status, body } = await request(app)
         .get(`/groups/${TEST_GROUP_ID}/entries`)
         .set("Authorization", `Bearer ${jwt}`)
@@ -106,8 +106,7 @@ describe("/entries", () => {
       expect(body.items).to.be.an("array")
       body.items.forEach((item: any) => {
         expect(item.entries).to.be.an("array")
-        expect(item.user.entries).to.be.an("array")
-        expect(item.user.entries).to.deep.equal(item.entries)
+        expect(item.user.entries).to.be.undefined
       })
     })
   })

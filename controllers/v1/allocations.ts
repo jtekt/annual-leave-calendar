@@ -52,9 +52,8 @@ export const get_allocations_of_group = async (req: Request, res: Response) => {
   const items = users.map((user: IUser) => {
     const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw new Error("User has no ID")
-    const allocs = allocations_mapping[user_id] || []
-    // TODO: remove "allocatons" once all consumers use "allocations" — kept for backwards compatibility with the original typo
-    return { user, allocations: allocs, allocatons: allocs }
+    const allocations = allocations_mapping[user_id] || []
+    return { user, allocations }
   })
 
   res.send({ year, user_ids, limit, skip, total: total_of_users, items })

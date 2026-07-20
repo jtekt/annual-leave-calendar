@@ -106,8 +106,6 @@ export async function listEntriesOfGroup(
     const user_id = getUserIdFromUserObj(user)
     if (!user_id) throw new Error("User has no ID")
     const entries = entries_mapping[user_id] || []
-    // TODO: remove once all consumers use item.entries instead of item.user.entries — kept for backwards compatibility
-    user.entries = entries
     return {
       user,
       entries,
