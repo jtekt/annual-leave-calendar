@@ -14,9 +14,11 @@ export const identificationMiddleware = () => {
     strategies: {
       identification: {
         url: IDENTIFICATION_URL,
+        identifierField: "_id"
       },
     },
   }
+
   return middleware(options)
 }
 

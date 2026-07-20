@@ -92,6 +92,23 @@ describe("/allocations", () => {
     })
   })
 
+  describe("GET /groups/:group_id/allocations", () => {
+    const { TEST_GROUP_ID } = process.env
+
+    it("Should return allocations under the correct key with no legacy typo key", async () => {
+      const { status, body } = await request(app)
+        .get(`/groups/${TEST_GROUP_ID}/allocations`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+      expect(body.items).to.be.an("array")
+      body.items.forEach((item: any) => {
+        expect(item).to.have.property("allocations")
+        expect(item).to.not.have.property("allocatons")
+      })
+    })
+  })
+
   describe("PATCH /allocations/:allocation_id", () => {
     it("Should allow the update of an allocation", async () => {
       const { status } = await request(app)
