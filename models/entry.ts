@@ -30,6 +30,6 @@ schema.index(
 schema.index({ user_id: 1 })
 schema.index({ date: 1 })
 
-const Model = model("yotei", schema)
+const Model = model<IEntry>("yotei", schema)
 
 export default Model
