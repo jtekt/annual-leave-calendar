@@ -16,7 +16,8 @@ export function createMcpServer(user: IUser) {
   server.registerTool(
     "get_entry",
     {
-      description: "Get a single calendar entry by its MongoDB _id",
+      title: "Get Entry",
+      description: "Get a single calendar entry by its _id",
       inputSchema: EntryIdParamsSchema.shape,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
     },
@@ -31,6 +32,7 @@ export function createMcpServer(user: IUser) {
   server.registerTool(
     "list_user_entries",
     {
+      title: "List User Entries",
       description: "List calendar entries for the authenticated user with optional date range",
       inputSchema: GetEntriesOfUserQuerySchema.shape,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
@@ -38,13 +40,14 @@ export function createMcpServer(user: IUser) {
     async (params) => {
       const result = await listEntriesOfUser(getUserIdFromUserObj(user), params)
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
-    }
+    },
   )
 
   // create_entry — user_id is taken from the authenticated session, not from input
   server.registerTool(
     "create_entry",
     {
+      title: "Create Entry",
       description: "Create or update a calendar entry for the authenticated user on a given date",
       inputSchema: CreateEntryBodySchema.shape,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
@@ -61,6 +64,7 @@ export function createMcpServer(user: IUser) {
   server.registerTool(
     "update_entry",
     {
+      title: "Update Entry",
       description: "Update fields of a calendar entry by _id",
       inputSchema: {
         ...EntryIdParamsSchema.shape,
@@ -78,6 +82,7 @@ export function createMcpServer(user: IUser) {
   server.registerTool(
     "delete_entry",
     {
+      title: "Delete Entry",
       description: "Delete a calendar entry by its _id",
       inputSchema: EntryIdParamsSchema.shape,
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },

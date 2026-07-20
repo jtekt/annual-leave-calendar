@@ -80,8 +80,8 @@ export const CreateEntriesBodySchema = z.array(
 )
 
 export const UpdateEntryBodySchema = z.object({
-  type: z.string().optional().describe("Leave type (e.g. 有休)"),
   date: z.string().optional().describe("Date of the entry (ISO string)"),
+  type: z.string().optional().describe("Leave type (e.g. 有休, 前半休, 後半休)"),
   am: z.coerce.boolean().optional().describe("Morning half-day flag"),
   pm: z.coerce.boolean().optional().describe("Afternoon half-day flag"),
   taken: z.coerce.boolean().optional().describe("Whether the leave was taken"),
