@@ -63,7 +63,7 @@ export const DeleteEntriesQuerySchema = z.object({
 
 export const CreateEntryBodySchema = z.object({
   date: z.string({ error: "date is required" }).describe("Date of the entry (ISO string)"),
-  type: z.string().default("有休").describe("Leave type (e.g. 有休)"),
+  type: z.string().default("有休").describe("Leave type (e.g. 有休, 前半休, 後半休)"),
   am: z.coerce.boolean().default(true).describe("Morning half-day flag"),
   pm: z.coerce.boolean().default(true).describe("Afternoon half-day flag"),
   taken: z.coerce.boolean().default(false).describe("Whether the leave was taken"),

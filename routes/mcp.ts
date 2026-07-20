@@ -1,8 +1,6 @@
 import { Request, Response, Router } from "express"
-import { randomUUID } from "node:crypto"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
-import { createMcpServer } from "../controllers/mcp"
+import { createMcpServer } from "../mcp"
 import { identificationMiddleware } from "../auth"
 
 const router = Router()

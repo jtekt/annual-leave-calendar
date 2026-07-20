@@ -130,7 +130,7 @@ export async function createEntry(
   fields: z.infer<typeof CreateEntryBodySchema>
 ) {
   const { date: dateStr, ...otherFields } = fields
-  const [y, m, d] = dateStr.split(/[-/]/).map(Number)
+  const [y, m, d] = dateStr.split("T")[0].split(/[-/]/).map(Number)
   const date = new Date(Date.UTC(y, m - 1, d))
   return Entry.findOneAndUpdate(
     { user_id, date },
@@ -156,7 +156,7 @@ export async function updateEntry(
   const update: Record<string, any> = { ...otherFields }
 
   if (dateStr) {
-    const [y, m, d] = dateStr.split(/[-/]/).map(Number)
+    const [y, m, d] = dateStr.split("T")[0].split(/[-/]/).map(Number)
     update.date = new Date(Date.UTC(y, m - 1, d))
   }
 
