@@ -1,13 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { getEntry, updateEntry, deleteEntry, createEntry, listEntriesOfUser } from "../services/entries"
+import { getEntry, updateEntry, deleteEntry, createEntry, listEntriesOfUser } from "./services/entries"
 import {
   CreateEntryBodySchema,
   EntryIdParamsSchema,
   GetEntriesOfUserQuerySchema,
   UpdateEntryBodySchema,
-} from "../validation/entries"
-import { getUserIdFromUserObj } from "../utils"
-import IUser from "../interfaces/user"
+} from "./validation/entries"
+import { getUserIdFromUserObj } from "./utils"
+import IUser from "./interfaces/user"
 
 export function createMcpServer(user: IUser) {
   const server = new McpServer({ name: "nenkyuu-calendar", version: "0.0.1" })
