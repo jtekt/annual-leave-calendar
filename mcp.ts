@@ -73,6 +73,12 @@ export function createMcpServer(user: IUser) {
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
     },
     async ({ _id, ...fields }) => {
+      const user_id = getUserIdFromUserObj(user)
+      if (!user_id) return { content: [{ type: "text", text: "Could not resolve user ID from session" }], isError: true }
+
+      const entry = await getEntry(_id)
+      if(!entry || entry.user_id !== user_id) return { content: [{ type: "text", text: "Could not find entry" }], isError: true }
+
       const result = await updateEntry(_id, fields)
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
     }
@@ -88,6 +94,12 @@ export function createMcpServer(user: IUser) {
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
     },
     async ({ _id }) => {
+      const user_id = getUserIdFromUserObj(user)
+      if (!user_id) return { content: [{ type: "text", text: "Could not resolve user ID from session" }], isError: true }
+
+      const entry = await getEntry(_id)
+      if(!entry || entry.user_id !== user_id) return { content: [{ type: "text", text: "Could not find entry" }], isError: true }
+      
       const result = await deleteEntry(_id)
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
     }
