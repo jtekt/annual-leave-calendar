@@ -1,5 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { getEntry, updateEntry, deleteEntry, createEntry, listEntriesOfUser } from "./services/entries"
+import {
+  getEntry,
+  updateEntry,
+  deleteEntry,
+  createEntry,
+  listEntriesOfUser,
+} from "./services/entries"
 import {
   CreateEntryBodySchema,
   EntryIdParamsSchema,
@@ -9,8 +15,16 @@ import {
 import { getUserIdFromUserObj } from "./utils"
 import IUser from "./interfaces/user"
 
+import { name, version } from "./package.json"
+
 export function createMcpServer(user: IUser) {
-  const server = new McpServer({ name: "nenkyuu-calendar", version: "0.0.1" })
+  const server = new McpServer({
+    name,
+    title: "Leaves Calendar",
+    description:
+      "Manage paid-leave (nenkyuu) calendar entries for the authenticated user — create, read, update, and delete entries by date.",
+    version,
+  })
 
   // get_entry — by _id, no user context needed
   server.registerTool(
@@ -19,12 +33,22 @@ export function createMcpServer(user: IUser) {
       title: "Get Entry",
       description: "Get a single calendar entry by its _id",
       inputSchema: EntryIdParamsSchema.shape,
-      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
     },
     async ({ _id }) => {
       const entry = await getEntry(_id)
-      if (!entry) return { content: [{ type: "text", text: "Entry not found" }], isError: true }
-      return { content: [{ type: "text", text: JSON.stringify(entry, null, 2) }] }
+      if (!entry)
+        return {
+          content: [{ type: "text", text: "Entry not found" }],
+          isError: true,
+        }
+      return {
+        content: [{ type: "text", text: JSON.stringify(entry, null, 2) }],
+      }
     }
   )
 
@@ -33,14 +57,21 @@ export function createMcpServer(user: IUser) {
     "list_user_entries",
     {
       title: "List User Entries",
-      description: "List calendar entries for the authenticated user with optional date range",
+      description:
+        "List calendar entries for the authenticated user with optional date range",
       inputSchema: GetEntriesOfUserQuerySchema.shape,
-      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
     },
     async (params) => {
       const result = await listEntriesOfUser(getUserIdFromUserObj(user), params)
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
-    },
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      }
+    }
   )
 
   // create_entry — user_id is taken from the authenticated session, not from input
@@ -48,15 +79,28 @@ export function createMcpServer(user: IUser) {
     "create_entry",
     {
       title: "Create Entry",
-      description: "Create or update a calendar entry for the authenticated user on a given date",
+      description:
+        "Create or update a calendar entry for the authenticated user on a given date",
       inputSchema: CreateEntryBodySchema.shape,
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
     },
     async (fields) => {
       const user_id = getUserIdFromUserObj(user)
-      if (!user_id) return { content: [{ type: "text", text: "Could not resolve user ID from session" }], isError: true }
+      if (!user_id)
+        return {
+          content: [
+            { type: "text", text: "Could not resolve user ID from session" },
+          ],
+          isError: true,
+        }
       const entry = await createEntry(user_id, fields)
-      return { content: [{ type: "text", text: JSON.stringify(entry, null, 2) }] }
+      return {
+        content: [{ type: "text", text: JSON.stringify(entry, null, 2) }],
+      }
     }
   )
 
@@ -70,17 +114,33 @@ export function createMcpServer(user: IUser) {
         ...EntryIdParamsSchema.shape,
         ...UpdateEntryBodySchema.shape,
       },
-      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      },
     },
     async ({ _id, ...fields }) => {
       const user_id = getUserIdFromUserObj(user)
-      if (!user_id) return { content: [{ type: "text", text: "Could not resolve user ID from session" }], isError: true }
+      if (!user_id)
+        return {
+          content: [
+            { type: "text", text: "Could not resolve user ID from session" },
+          ],
+          isError: true,
+        }
 
       const entry = await getEntry(_id)
-      if(!entry || entry.user_id !== user_id) return { content: [{ type: "text", text: "Could not find entry" }], isError: true }
+      if (!entry || entry.user_id !== user_id)
+        return {
+          content: [{ type: "text", text: "Could not find entry" }],
+          isError: true,
+        }
 
       const result = await updateEntry(_id, fields)
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      }
     }
   )
 
@@ -91,17 +151,33 @@ export function createMcpServer(user: IUser) {
       title: "Delete Entry",
       description: "Delete a calendar entry by its _id",
       inputSchema: EntryIdParamsSchema.shape,
-      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      },
     },
     async ({ _id }) => {
       const user_id = getUserIdFromUserObj(user)
-      if (!user_id) return { content: [{ type: "text", text: "Could not resolve user ID from session" }], isError: true }
+      if (!user_id)
+        return {
+          content: [
+            { type: "text", text: "Could not resolve user ID from session" },
+          ],
+          isError: true,
+        }
 
       const entry = await getEntry(_id)
-      if(!entry || entry.user_id !== user_id) return { content: [{ type: "text", text: "Could not find entry" }], isError: true }
-      
+      if (!entry || entry.user_id !== user_id)
+        return {
+          content: [{ type: "text", text: "Could not find entry" }],
+          isError: true,
+        }
+
       const result = await deleteEntry(_id)
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] }
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      }
     }
   )
 
