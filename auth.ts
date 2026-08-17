@@ -1,20 +1,20 @@
 import middleware, {
   type Options,
 } from "@jtekt/express-authentication-middleware"
-import createHttpError from "http-errors"
 import { Request, Response, NextFunction, RequestHandler } from "express"
+import { UnauthorizedError, ValidationError } from "./errors"
 
 const { IDENTIFICATION_URL } = process.env
 
 export const identificationMiddleware = () => {
   if (!IDENTIFICATION_URL)
-    throw createHttpError(400, `IDENTIFICATION_URL not provided`)
+    throw new ValidationError(`IDENTIFICATION_URL not provided`)
 
   const options: Options = {
     strategies: {
       identification: {
         url: IDENTIFICATION_URL,
-        identifierField: "_id"
+        identifierField: "_id",
       },
     },
   }
@@ -36,14 +36,14 @@ export const caldavMiddleware = (): RequestHandler => {
 
     if (!authHeader?.startsWith("Basic ")) {
       res.setHeader("WWW-Authenticate", 'Basic realm="Nenkyuu CalDAV"')
-      return next(createHttpError(401, "Authentication required"))
+      throw new UnauthorizedError("Authentication required")
     }
 
     const decoded = Buffer.from(authHeader.slice(6), "base64").toString("utf-8")
     const colonIdx = decoded.indexOf(":")
     if (colonIdx === -1) {
       res.setHeader("WWW-Authenticate", 'Basic realm="Nenkyuu CalDAV"')
-      return next(createHttpError(401, "Invalid credentials"))
+      throw new UnauthorizedError("Invalid Basic auth format")
     }
 
     const secret = decoded.slice(colonIdx + 1) // JWT or API key

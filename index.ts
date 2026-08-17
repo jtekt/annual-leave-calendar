@@ -16,6 +16,12 @@ import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
 import { TOTAL_HEADER } from "./constants"
 import { getUserIdFromUserObj } from "./utils"
+import {
+  NotFoundError,
+  ValidationError,
+  UnauthorizedError,
+  ForbiddenError,
+} from "./errors"
 
 const {
   APP_PORT = 80,
@@ -78,16 +84,19 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   const route = req.route?.path || "unknown route"
 
   const { user } = res.locals
+  let current_user = user ? getUserIdFromUserObj(user) : "anonymous"
 
-  let { statusCode = 500, message = error } = error
+  let statusCode: number
+  if (error instanceof NotFoundError) statusCode = 404
+  else if (error instanceof ValidationError) statusCode = 400
+  else if (error instanceof UnauthorizedError) statusCode = 401
+  else if (error instanceof ForbiddenError) statusCode = 403
+  else statusCode = error.statusCode ?? 500
 
-  if (user) {
-    let current_user = getUserIdFromUserObj(user)
-    console.error(`${current_user} : [${method} | ${route}] Error: ${message}`)
-  } else {
-    console.error(`[${method} | ${route}] Error: ${message}`)
-  }
   if (isNaN(statusCode) || statusCode > 600) statusCode = 500
+
+  const message = error.message ?? String(error)
+  console.error(`${current_user} : [${method} | ${route}] Error: ${message}`)
   res.status(statusCode).send(message)
 })
 
