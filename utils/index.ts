@@ -1,6 +1,6 @@
-import createHttpError from "http-errors"
 import IUser from "../interfaces/user"
 import { fetchUserData } from "../services/members"
+import { ForbiddenError, NotFoundError, UnauthorizedError } from "../errors"
 
 const { IDENTIFIER_FIELDS = "sub", RESOLVE_USER_IDENTIFIER } = process.env
 
@@ -18,10 +18,8 @@ export const getUserIdFromUserObj = (user: IUser | undefined): string => {
       if (fromProps) return fromProps
     }
   }
-  
 
-  throw createHttpError(
-    401,
+  throw new UnauthorizedError(
     "User ID not found using field(s): " + identifierFields.join(", ")
   )
 }
@@ -51,8 +49,11 @@ export const getStableUserIdFromParamsUserId = async (
     const userData = await fetchUserData(identifier, reqHeaders)
     return getUserIdFromUserObj(userData)
   } catch (error: any) {
-    if (error?.status === 404) {
-      throw createHttpError(403, `No user found for identifier "${identifier}"`)
+    if (error instanceof NotFoundError) {
+      throw new ForbiddenError(
+        "User",
+        `No user found for identifier "${identifier}"`
+      )
     }
     throw error
   }

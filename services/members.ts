@@ -1,6 +1,6 @@
 import axios from "axios"
-import createHttpError from "http-errors"
 import { extractAuthHeaders } from "../utils"
+import { NotFoundError, UnauthorizedError, ValidationError } from "../errors"
 
 const {
   USER_MANAGER_API_URL,
@@ -33,9 +33,16 @@ export async function fetchGroupMembers(
       limit_of_users: data.batch_size,
     }
   } catch (error: any) {
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query group members" } = response
-    throw createHttpError(status, `${data}: ${groupId}`)
+    const status = error?.response?.status ?? 500
+    if (status === 403 || status === 401) {
+      throw new UnauthorizedError(
+        "Unauthorized to access GROUP_MANAGER_API_URL"
+      )
+    } else if (status === 404) {
+      throw new NotFoundError("GROUP_MANAGER_API_URL", groupId)
+    } else {
+      throw new ValidationError("Failed to fetch from GROUP_MANAGER_API_URL")
+    }
   }
 }
 
@@ -67,10 +74,18 @@ export async function fetchWorkplaceEmployees(
       limit_of_users: batchSize,
     }
   } catch (error: any) {
-    const { response = {} } = error
-    const { status = 500, data = "Failed to query workplace members" } =
-      response
-    throw createHttpError(status, `${data}: ${workplaceId}`)
+    const status = error?.response?.status ?? 500
+    if (status === 403 || status === 401) {
+      throw new UnauthorizedError(
+        "Unauthorized to access WORKPLACE_MANAGER_API_URL"
+      )
+    } else if (status === 404) {
+      throw new NotFoundError("WORKPLACE_MANAGER_API_URL", workplaceId)
+    } else {
+      throw new ValidationError(
+        "Failed to fetch from WORKPLACE_MANAGER_API_URL"
+      )
+    }
   }
 }
 
@@ -88,13 +103,11 @@ export const fetchUserData = async (
     const status = error?.response?.status ?? 500
     const code = error?.code
     if (status === 403 || status === 401) {
-      throw createHttpError(403, "Unauthorized to access USER_MANAGER_API")
+      throw new UnauthorizedError("Unauthorized to access USER_MANAGER_API")
     } else if (status === 404) {
-      throw createHttpError(404, "User not found in USER_MANAGER_API")
-    } else if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
-      throw createHttpError(502, "USER_MANAGER_API is unreachable")
+      throw new NotFoundError("USER_MANAGER_API", user_id)
     } else {
-      throw createHttpError(400, "Failed to fetch from USER_MANAGER_API")
+      throw new ValidationError("Failed to fetch from USER_MANAGER_API")
     }
   }
 }
