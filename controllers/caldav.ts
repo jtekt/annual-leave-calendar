@@ -1,5 +1,4 @@
 import { Request, Response } from "express"
-import createHttpError from "http-errors"
 import {
   entryToIcal,
   entryFilename,
@@ -19,6 +18,7 @@ import {
 
 import Entry from "../models/entry"
 import { getUserIdFromUserObj } from "../utils"
+import { ForbiddenError, ValidationError } from "../errors"
 
 // ─── Root (/caldav/) ──────────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ export const handleCalendarPropfind = async (req: Request, res: Response) => {
   const identifier = getUserIdFromUserObj(res.locals.user)
   let user = req.params.user as string | undefined
   if (user && decodeURIComponent(user) !== identifier)
-    throw createHttpError(403, "Forbidden")
+    throw new ForbiddenError("Calendar")
 
   const depth = (req.headers["depth"] as string) ?? "0"
   const entries = await Entry.find({ user_id: identifier }).lean()
@@ -140,7 +140,7 @@ export const handleReport = async (req: Request, res: Response) => {
   const identifier = getUserIdFromUserObj(res.locals.user)
   const user = req.params.user as string | undefined
   if (user && decodeURIComponent(user) !== identifier)
-    throw createHttpError(403, "Forbidden")
+    throw new ForbiddenError("Report")
 
   const collHref = `/caldav/calendars/${encodeURIComponent(identifier)}/`
   const body = (req.body as string) ?? ""
@@ -259,11 +259,11 @@ export const handleEventPut = async (req: Request, res: Response) => {
   const identifier = getUserIdFromUserObj(res.locals.user)
   const user = req.params.user as string | undefined
   if (user && decodeURIComponent(user) !== identifier)
-    throw createHttpError(403, "Forbidden")
+    throw new ForbiddenError("Event")
 
   const parsed = parseIcal((req.body as string) ?? "")
   if (!parsed.date)
-    throw createHttpError(400, "Missing or unparseable DTSTART in iCal data")
+    throw new ValidationError("Missing or unparseable DTSTART in iCal data")
 
   const existing = await findEntry(req, res)
 

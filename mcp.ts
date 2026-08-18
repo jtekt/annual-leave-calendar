@@ -14,8 +14,31 @@ import {
 } from "./validation/entries"
 import { getUserIdFromUserObj } from "./utils"
 import IUser from "./interfaces/user"
+import {
+  NotFoundError,
+  ValidationError,
+  UnauthorizedError,
+  ForbiddenError,
+} from "./errors"
 
 import { name, version } from "./package.json"
+
+type McpErrorResult = { content: [{ type: "text"; text: string }]; isError: true }
+
+function appErrorToMcpResult(error: unknown): McpErrorResult | never {
+  if (
+    error instanceof NotFoundError ||
+    error instanceof ValidationError ||
+    error instanceof UnauthorizedError ||
+    error instanceof ForbiddenError
+  ) {
+    return {
+      content: [{ type: "text", text: (error as Error).message }],
+      isError: true,
+    }
+  }
+  throw error
+}
 
 export function createMcpServer(user: IUser) {
   const server = new McpServer({
@@ -40,14 +63,18 @@ export function createMcpServer(user: IUser) {
       },
     },
     async ({ _id }) => {
-      const entry = await getEntry(_id)
-      if (!entry)
+      try {
+        const entry = await getEntry(_id)
+        if (!entry)
+          return {
+            content: [{ type: "text", text: "Entry not found" }],
+            isError: true,
+          }
         return {
-          content: [{ type: "text", text: "Entry not found" }],
-          isError: true,
+          content: [{ type: "text", text: JSON.stringify(entry, null, 2) }],
         }
-      return {
-        content: [{ type: "text", text: JSON.stringify(entry, null, 2) }],
+      } catch (error) {
+        return appErrorToMcpResult(error)
       }
     }
   )
@@ -67,9 +94,13 @@ export function createMcpServer(user: IUser) {
       },
     },
     async (params) => {
-      const result = await listEntriesOfUser(getUserIdFromUserObj(user), params)
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      try {
+        const result = await listEntriesOfUser(getUserIdFromUserObj(user), params)
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        }
+      } catch (error) {
+        return appErrorToMcpResult(error)
       }
     }
   )
@@ -89,17 +120,14 @@ export function createMcpServer(user: IUser) {
       },
     },
     async (fields) => {
-      const user_id = getUserIdFromUserObj(user)
-      if (!user_id)
+      try {
+        const user_id = getUserIdFromUserObj(user)
+        const entry = await createEntry(user_id, fields)
         return {
-          content: [
-            { type: "text", text: "Could not resolve user ID from session" },
-          ],
-          isError: true,
+          content: [{ type: "text", text: JSON.stringify(entry, null, 2) }],
         }
-      const entry = await createEntry(user_id, fields)
-      return {
-        content: [{ type: "text", text: JSON.stringify(entry, null, 2) }],
+      } catch (error) {
+        return appErrorToMcpResult(error)
       }
     }
   )
@@ -121,25 +149,22 @@ export function createMcpServer(user: IUser) {
       },
     },
     async ({ _id, ...fields }) => {
-      const user_id = getUserIdFromUserObj(user)
-      if (!user_id)
-        return {
-          content: [
-            { type: "text", text: "Could not resolve user ID from session" },
-          ],
-          isError: true,
-        }
+      try {
+        const user_id = getUserIdFromUserObj(user)
 
-      const entry = await getEntry(_id)
-      if (!entry || entry.user_id !== user_id)
-        return {
-          content: [{ type: "text", text: "Could not find entry" }],
-          isError: true,
-        }
+        const entry = await getEntry(_id)
+        if (!entry || entry.user_id !== user_id)
+          return {
+            content: [{ type: "text", text: "Could not find entry" }],
+            isError: true,
+          }
 
-      const result = await updateEntry(_id, fields)
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        const result = await updateEntry(_id, fields)
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        }
+      } catch (error) {
+        return appErrorToMcpResult(error)
       }
     }
   )
@@ -158,25 +183,22 @@ export function createMcpServer(user: IUser) {
       },
     },
     async ({ _id }) => {
-      const user_id = getUserIdFromUserObj(user)
-      if (!user_id)
-        return {
-          content: [
-            { type: "text", text: "Could not resolve user ID from session" },
-          ],
-          isError: true,
-        }
+      try {
+        const user_id = getUserIdFromUserObj(user)
 
-      const entry = await getEntry(_id)
-      if (!entry || entry.user_id !== user_id)
-        return {
-          content: [{ type: "text", text: "Could not find entry" }],
-          isError: true,
-        }
+        const entry = await getEntry(_id)
+        if (!entry || entry.user_id !== user_id)
+          return {
+            content: [{ type: "text", text: "Could not find entry" }],
+            isError: true,
+          }
 
-      const result = await deleteEntry(_id)
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        const result = await deleteEntry(_id)
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        }
+      } catch (error) {
+        return appErrorToMcpResult(error)
       }
     }
   )

@@ -1,5 +1,7 @@
-import createHttpError from "http-errors"
-import { getStableUserIdFromParamsUserId, getUserIdFromUserObj } from "../../utils"
+import {
+  getStableUserIdFromParamsUserId,
+  getUserIdFromUserObj,
+} from "../../utils"
 import { validate } from "../../utils/validate"
 import { Request, Response } from "express"
 import IUser from "../../interfaces/user"
@@ -23,31 +25,52 @@ import {
   getUserArrayAllocationsByYear,
 } from "../../services/allocations"
 import { fetchGroupMembers } from "../../services/members"
+import { NotFoundError } from "../../errors"
 
 export const get_allocations_of_user = async (req: Request, res: Response) => {
-  const { user_id: identifier } = validate(AllocationUserParamsSchema, req.params)
+  const { user_id: identifier } = validate(
+    AllocationUserParamsSchema,
+    req.params
+  )
   const params = validate(GetAllocationsOfUserQuerySchema, req.query)
-  const user_id = await getStableUserIdFromParamsUserId(res.locals.user, identifier, req.headers)
+  const user_id = await getStableUserIdFromParamsUserId(
+    res.locals.user,
+    identifier,
+    req.headers
+  )
   const allocations = await listAllocationsOfUser(user_id, params)
   res.send(allocations)
 }
 
 export const get_allocations_of_group = async (req: Request, res: Response) => {
   const { group_id } = validate(AllocationGroupParamsSchema, req.params)
-  const { year, limit, skip } = validate(GetAllocationsOfGroupQuerySchema, req.query)
+  const { year, limit, skip } = validate(
+    GetAllocationsOfGroupQuerySchema,
+    req.query
+  )
 
-  const { users, total_of_users } = await fetchGroupMembers(group_id, req.headers, limit, skip)
+  const { users, total_of_users } = await fetchGroupMembers(
+    group_id,
+    req.headers,
+    limit,
+    skip
+  )
 
-  const user_ids = users.map((user: IUser) => ({ user_id: getUserIdFromUserObj(user) }))
-  if (!user_ids.length) throw createHttpError(404, `Group ${group_id} appears to be empty`)
+  const user_ids = users.map((user: IUser) => ({
+    user_id: getUserIdFromUserObj(user),
+  }))
+  if (!users.length) throw new NotFoundError("Group", group_id)
 
   const result = await getUserArrayAllocationsByYear(user_ids, year)
 
-  const allocations_mapping = result.allocations.reduce((prev: Record<string, any[]>, allocation: any) => {
-    if (!prev[allocation.user_id]) prev[allocation.user_id] = []
-    prev[allocation.user_id].push(allocation)
-    return prev
-  }, {})
+  const allocations_mapping = result.allocations.reduce(
+    (prev: Record<string, any[]>, allocation: any) => {
+      if (!prev[allocation.user_id]) prev[allocation.user_id] = []
+      prev[allocation.user_id].push(allocation)
+      return prev
+    },
+    {}
+  )
 
   const items = users.map((user: IUser) => {
     const user_id = getUserIdFromUserObj(user)
@@ -72,9 +95,16 @@ export const get_all_allocations = async (req: Request, res: Response) => {
 }
 
 export const create_allocation = async (req: Request, res: Response) => {
-  const { user_id: identifier } = validate(AllocationUserParamsSchema, req.params)
+  const { user_id: identifier } = validate(
+    AllocationUserParamsSchema,
+    req.params
+  )
   const fields = validate(CreateAllocationBodySchema, req.body)
-  const user_id = await getStableUserIdFromParamsUserId(res.locals.user, identifier, req.headers)
+  const user_id = await getStableUserIdFromParamsUserId(
+    res.locals.user,
+    identifier,
+    req.headers
+  )
   const allocation = await createOrUpdateAllocation(user_id, fields)
   res.send(allocation)
 }

@@ -1,5 +1,4 @@
 import { z } from "zod"
-import createHttpError from "http-errors"
 import Allocation from "../models/allocation"
 import { DEFAULT_BATCH_SIZE } from "../constants"
 import {
@@ -8,6 +7,7 @@ import {
   GetAllocationsOfUserQuerySchema,
   UpdateAllocationBodySchema,
 } from "../validation/allocations"
+import { ValidationError } from "../errors"
 
 export async function getAllocation(id: string) {
   return Allocation.findById(id)
@@ -24,7 +24,10 @@ export async function listAllocations(
   if (user_id) query.user_id = user_id
 
   const [allocations, total] = await Promise.all([
-    Allocation.find(query).sort({ user_id: 1, year: 1 }).skip(skip).limit(numericLimit),
+    Allocation.find(query)
+      .sort({ user_id: 1, year: 1 })
+      .skip(skip)
+      .limit(numericLimit),
     Allocation.countDocuments(query),
   ])
 
@@ -42,8 +45,8 @@ export async function listAllocationsOfUser(
 }
 
 export async function getUserAllocationByYear(user_id: string, year: number) {
-  if (!user_id) throw createHttpError(400, "User ID not provided")
-  if (!year) throw createHttpError(400, "Year not provided")
+  if (!user_id) throw new ValidationError("User ID not provided")
+  if (!year) throw new ValidationError("Year not provided")
 
   return Allocation.findOne({ year, user_id })
     .skip(0)
@@ -54,8 +57,9 @@ export async function getUserArrayAllocationsByYear(
   user_ids: { user_id: string | undefined }[],
   year: number
 ) {
-  if (!user_ids?.length) throw createHttpError(400, "No User IDs found in the provided array")
-  if (!year) throw createHttpError(400, "Year not provided")
+  if (!user_ids?.length)
+    throw new ValidationError("No User IDs found in the provided array")
+  if (!year) throw new ValidationError("Year not provided")
 
   const query: Record<string, any> = { year, $or: user_ids }
 
@@ -64,7 +68,14 @@ export async function getUserArrayAllocationsByYear(
     Allocation.countDocuments(query),
   ])
 
-  return { year, user_ids, limit: DEFAULT_BATCH_SIZE, skip: 0, total, allocations }
+  return {
+    year,
+    user_ids,
+    limit: DEFAULT_BATCH_SIZE,
+    skip: 0,
+    total,
+    allocations,
+  }
 }
 
 export async function createOrUpdateAllocation(
@@ -74,7 +85,10 @@ export async function createOrUpdateAllocation(
   const { year, leaves, reserve } = fields
   const filter = { year, user_id }
   const update = { year, user_id, leaves, reserve }
-  return Allocation.findOneAndUpdate(filter, update, { new: true, upsert: true })
+  return Allocation.findOneAndUpdate(filter, update, {
+    new: true,
+    upsert: true,
+  })
 }
 
 export async function updateAllocation(
