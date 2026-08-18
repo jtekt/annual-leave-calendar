@@ -1,5 +1,5 @@
 import { ZodType } from "zod"
-import createHttpError from "http-errors"
+import { ValidationError } from "../errors"
 
 /**
  * Validates raw input (req.query, req.params, req.body) against a Zod schema.
@@ -12,7 +12,7 @@ export function validate<T>(schema: ZodType<T>, data: unknown): T {
     const issues = result.error.issues
       .map((i) => `${i.path.join(".") || "value"}: ${i.message}`)
       .join("; ")
-    throw createHttpError(400, `Validation error: ${issues}`)
+    throw new ValidationError(`Validation error: ${issues}`)
   }
   return result.data
 }

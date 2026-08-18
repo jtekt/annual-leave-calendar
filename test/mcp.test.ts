@@ -208,6 +208,28 @@ describe("MCP Server — ownership enforcement", () => {
     })
   })
 
+  describe("application error handling", () => {
+    it("should surface 'Entry not found' message for a non-existent _id", async () => {
+      const result = await ownerClient.callTool({
+        name: "get_entry",
+        arguments: { _id: "000000000000000000000000" },
+      })
+      expect(result.isError).to.equal(true)
+      expect(textOf(result)).to.equal("Entry not found")
+    })
+
+    it("should return isError:true (not throw) when the session user has no recognizable ID fields", async () => {
+      const noIdUser: IUser = {} as IUser
+      const client = await connectMcpClient(noIdUser)
+      const result = await client.callTool({
+        name: "list_user_entries",
+        arguments: {},
+      })
+      expect(result.isError).to.equal(true)
+      expect(textOf(result)).to.include("User ID not found")
+    })
+  })
+
   // ─── delete_entry ───────────────────────────────────────────────────────────
 
   describe("delete_entry", () => {
