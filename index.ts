@@ -11,6 +11,7 @@ import {
   connected as dbConnected,
 } from "./db"
 import rootRouter from "./routes/index"
+import healthRouter from "./routes/health"
 import swaggerUi from "swagger-ui-express"
 import swaggerDocument from "./swagger-output.json"
 import { Request, Response, NextFunction } from "express"
@@ -72,6 +73,7 @@ app.get("/", (_: Request, res: Response) => {
   })
 })
 
+app.use("/health", healthRouter)
 app.use("/", rootRouter)
 
 app.listen(APP_PORT, () => {
