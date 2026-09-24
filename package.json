@@ -1,10 +1,10 @@
 {
   "name": "nenkyuu_calendar",
   "description": "A microservice to keep track of annual leaves of employees",
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
     "dev": "nodemon index.ts",
-    "build": "tsc --outdir ./build -p . ",
+    "build": "npm run swagger-autogen && tsc --outdir ./build -p .",
     "start": "node ./build/index.js",
     "test": "mocha -r ts-node/register test/*.test.ts --timeout 10000 --exit",
     "coverage": "nyc npm run test",

@@ -1,12 +1,10 @@
-FROM node:20
+FROM node:24-slim
 WORKDIR /usr/src/app
-
+COPY package*.json ./
+RUN npm ci
+COPY . .
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
-
-COPY . .
-RUN npm install
 RUN npm run build
-RUN npm run swagger-autogen
 EXPOSE 80
-CMD [ "npm", "run", "start"]
+CMD ["node", "."]
