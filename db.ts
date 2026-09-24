@@ -32,6 +32,10 @@ const mongodb_options = {
 mongoose.set('useFindAndModify', false)
 mongoose.set("useCreateIndex", true)
 
+// Mongoose does not retry a failed initial connection by itself, hence the retry loop.
+// Not strictly needed: the process could exit on failure instead, and Kubernetes
+// would restart the pod (with backoff) until the DB is up. Retrying here recovers
+// faster once the DB is back and avoids CrashLoopBackOff.
 export const connect = () => {
   console.log(`[MongoDB] Attempting connection to ${redactedConnectionString}`)
 
