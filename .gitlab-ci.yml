@@ -19,8 +19,6 @@ build:
   rules:
     - if: $CI_COMMIT_TAG
   before_script:
-    # Registry login
-    - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ECR_PUBLIC_URL}
     # Create repository in ECR if it does not exist yet
     - >
       aws ecr-public create-repository --region us-east-1 --repository-name ${APPLICATION_NAME}
@@ -35,7 +33,6 @@ test:
   rules:
     - if: $CI_COMMIT_TAG
   before_script:
-    - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ECR_PUBLIC_URL}
     # Creating network for TDD
     - docker network create tdd
     # Creating DB container in network
@@ -72,8 +69,6 @@ release:
   stage: release
   rules:
     - if: $CI_COMMIT_TAG
-  before_script:
-    - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ECR_PUBLIC_URL}
   script:
     - docker pull ${CONTAINER_IMAGE_TEST}
     - docker tag ${CONTAINER_IMAGE_TEST} ${CONTAINER_IMAGE_LATEST}
