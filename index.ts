@@ -4,7 +4,7 @@ import express from "express"
 import qs from "qs"
 import cors from "cors"
 import promBundle from "express-prom-bundle"
-import { author, version } from "./package.json"
+import { author } from "./package.json"
 import {
   redactedConnectionString,
   connect as dbConnect,
@@ -58,7 +58,7 @@ app.get("/", (_: Request, res: Response) => {
   res.send({
     application_name: "Nenkyuu Calendar API",
     author,
-    version,
+    version: process.env.APP_VERSION || "dev",
     auth: {
       identification_url: IDENTIFICATION_URL || "Unset",
     },
