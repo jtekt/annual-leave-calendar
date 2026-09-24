@@ -43,8 +43,11 @@ test:
       --name tdd-db
       --network tdd
       --hostname tdd-db
+      --health-cmd "mongo --quiet --eval 'db.runCommand({ ping: 1 })'"
+      --health-interval 2s
       mongo:4
-    - sleep 40 # Wait for containers to be available
+    # Wait until MongoDB is ready (fail after 2 minutes)
+    - timeout 120 sh -c 'until [ "$(docker inspect -f {{.State.Health.Status}} tdd-db)" = healthy ]; do sleep 2; done'
   script:
     - >
       docker run
