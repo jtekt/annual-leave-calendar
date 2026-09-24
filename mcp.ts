@@ -21,7 +21,7 @@ import {
   ForbiddenError,
 } from "./errors"
 
-import { name, version } from "./package.json"
+import { name } from "./package.json"
 
 type McpErrorResult = { content: [{ type: "text"; text: string }]; isError: true }
 
@@ -46,7 +46,7 @@ export function createMcpServer(user: IUser) {
     title: "Leaves Calendar",
     description:
       "Manage paid-leave (nenkyuu) calendar entries for the authenticated user — create, read, update, and delete entries by date.",
-    version,
+    version: process.env.APP_VERSION || "dev",
   })
 
   // get_entry — by _id, no user context needed
