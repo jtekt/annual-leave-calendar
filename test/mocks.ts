@@ -11,12 +11,22 @@ const ACCOUNT_MANAGER = "http://account-manager.test"
 const GROUP_MANAGER = "http://group-manager.test"
 const WORKPLACE_MANAGER = "http://workplace-manager.test"
 
-export const TEST_JWT = "test-jwt"
 export const TEST_USER = {
   _id: "test-user",
   username: "test-user",
   display_name: "Test user",
 }
+
+// Must look like a JWT (header.payload.signature): the CalDAV auth bridge only
+// forwards the Basic auth password as a Bearer token when it has three parts.
+// Never verified, since identification is mocked below.
+const base64url = (value: object) =>
+  Buffer.from(JSON.stringify(value)).toString("base64url")
+export const TEST_JWT = [
+  base64url({ alg: "none", typ: "JWT" }),
+  base64url({ user_id: TEST_USER._id }),
+  "test-signature",
+].join(".")
 export const TEST_GROUP_ID = "test-group"
 export const TEST_WORKPLACE_ID = "test-workplace"
 
