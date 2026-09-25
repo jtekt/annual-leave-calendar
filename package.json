@@ -6,7 +6,7 @@
     "dev": "nodemon index.ts",
     "build": "npm run swagger-autogen && tsc --outdir ./build -p .",
     "start": "node ./build/index.js",
-    "test": "mocha -r ts-node/register -r ./test/mocks.ts test/*.test.ts --timeout 10000 --exit",
+    "test": "mocha --node-option no-experimental-strip-types -r ts-node/register -r ./test/mocks.ts test/*.test.ts --timeout 10000 --exit",
     "coverage": "nyc npm run test",
     "swagger-autogen": "ts-node swagger.ts"
   },

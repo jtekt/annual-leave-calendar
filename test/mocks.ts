@@ -32,15 +32,10 @@ export const TEST_WORKPLACE_ID = "test-workplace"
 
 // Overrides any value coming from a local .env: tests must never use real services
 Object.assign(process.env, {
-  LOGIN_URL: `${ACCOUNT_MANAGER}/v3/auth/login`,
   IDENTIFICATION_URL: `${ACCOUNT_MANAGER}/v3/users/self`,
   GROUP_MANAGER_API_URL: GROUP_MANAGER,
   WORKPLACE_MANAGER_API_URL: WORKPLACE_MANAGER,
   IDENTIFIER_FIELDS: "_id",
-  TEST_USER_USERNAME: TEST_USER.username,
-  TEST_USER_PASSWORD: "test-password",
-  TEST_GROUP_ID,
-  TEST_WORKPLACE_ID,
 })
 
 // Any request to a host that is not mocked fails; only local connections
@@ -48,11 +43,9 @@ Object.assign(process.env, {
 nock.disableNetConnect()
 nock.enableNetConnect(/^(127\.0\.0\.1|localhost)(:\d+)?$/)
 
-// Account manager: login returns a token, identification accepts only that token
+// Account manager: identification accepts only the test token
 nock(ACCOUNT_MANAGER)
   .persist()
-  .post("/v3/auth/login")
-  .reply(200, { jwt: TEST_JWT, user: TEST_USER })
   .get("/v3/users/self")
   .reply(function () {
     return this.req.headers.authorization === `Bearer ${TEST_JWT}`

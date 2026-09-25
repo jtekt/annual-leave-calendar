@@ -1,37 +1,11 @@
 import request from "supertest"
 import { expect } from "chai"
 import app from "../index"
-import axios from "axios"
-import dotenv from "dotenv"
-
-dotenv.config()
-
-const {
-  LOGIN_URL = "",
-  TEST_USER_USERNAME,
-  TEST_USER_PASSWORD,
-  TEST_GROUP_ID,
-  TEST_WORKPLACE_ID,
-} = process.env
-
-const login = async () => {
-  const body = { username: TEST_USER_USERNAME, password: TEST_USER_PASSWORD }
-  const { data } = await axios.post(LOGIN_URL, body)
-
-  return data
-}
+import { TEST_GROUP_ID, TEST_JWT, TEST_WORKPLACE_ID } from "./mocks"
 
 describe("/entries", () => {
-  let jwt: string, user, entry_id: string
-
-  before(async () => {
-    // Silencing console
-    //console.log = () => {}
-    const res: any = await login()
-    jwt = res.jwt
-    user = res.user
-    console.log("Login successful")
-  })
+  const jwt = TEST_JWT
+  let entry_id: string
 
   describe("POST /users/self/entries", () => {
     it("Should allow the creation of an entry", async () => {

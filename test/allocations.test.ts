@@ -1,31 +1,11 @@
 import request from "supertest"
 import { expect } from "chai"
 import app from "../index"
-import axios from "axios"
-import dotenv from "dotenv"
-
-dotenv.config()
-
-const { LOGIN_URL = "", TEST_USER_USERNAME, TEST_USER_PASSWORD } = process.env
-
-const login = async () => {
-  const body = { username: TEST_USER_USERNAME, password: TEST_USER_PASSWORD }
-  const { data } = await axios.post(LOGIN_URL, body)
-
-  return data
-}
+import { TEST_GROUP_ID, TEST_JWT } from "./mocks"
 
 describe("/allocations", () => {
-  let jwt: string, user, allocation_id: string
-
-  before(async () => {
-    // Silencing console
-    //console.log = () => {}
-    const res: any = await login()
-    jwt = res.jwt
-    user = res.user
-    console.log("Login successful")
-  })
+  const jwt = TEST_JWT
+  let allocation_id: string
 
   describe("POST /users/self/allocations", () => {
     it("Should allow the creation of an allocation", async () => {
@@ -93,8 +73,6 @@ describe("/allocations", () => {
   })
 
   describe("GET /groups/:group_id/allocations", () => {
-    const { TEST_GROUP_ID } = process.env
-
     it("Should return allocations under the correct key with no legacy typo key", async () => {
       const { status, body } = await request(app)
         .get(`/groups/${TEST_GROUP_ID}/allocations`)
