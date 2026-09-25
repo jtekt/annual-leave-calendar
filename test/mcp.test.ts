@@ -2,23 +2,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 import { expect } from "chai"
 import request from "supertest"
-import axios from "axios"
-import dotenv from "dotenv"
 import app from "../index"
 import { createMcpServer } from "../mcp"
 import IUser from "../interfaces/user"
-
-dotenv.config()
-
-const { LOGIN_URL = "", TEST_USER_USERNAME, TEST_USER_PASSWORD } = process.env
-
-async function login(): Promise<{ jwt: string; user: IUser }> {
-  const { data } = await axios.post(LOGIN_URL, {
-    username: TEST_USER_USERNAME,
-    password: TEST_USER_PASSWORD,
-  })
-  return data
-}
+import { TEST_JWT, TEST_USER } from "./mocks"
 
 async function connectMcpClient(user: IUser): Promise<Client> {
   const server = createMcpServer(user)
@@ -53,10 +40,8 @@ describe("MCP Server — ownership enforcement", () => {
   let sharedEntryId: string
 
   before(async () => {
-    const res = await login()
-    jwt = res.jwt
-    userA = res.user
-    console.log("Login successful")
+    jwt = TEST_JWT
+    userA = { ...TEST_USER, entries: [] }
 
     // Seed an entry owned by user A via the REST API
     const { body } = await request(app)

@@ -1,18 +1,7 @@
 import request from "supertest"
 import { expect } from "chai"
 import app from "../index"
-import axios from "axios"
-import dotenv from "dotenv"
-
-dotenv.config()
-
-const { LOGIN_URL = "", TEST_USER_USERNAME, TEST_USER_PASSWORD } = process.env
-
-const login = async () => {
-  const body = { username: TEST_USER_USERNAME, password: TEST_USER_PASSWORD }
-  const { data } = await axios.post(LOGIN_URL, body)
-  return data
-}
+import { TEST_JWT, TEST_USER } from "./mocks"
 
 /**
  * CalDAV clients send Authorization: Basic base64(username:jwt)
@@ -90,20 +79,11 @@ const SAMPLE_ICAL = (dateStr: string, summary = "有休") =>
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("/caldav", () => {
-  let jwt: string
-  let username: string
-  let encodedUser: string
-  let basicAuth: string
+  const jwt = TEST_JWT
+  const username = TEST_USER._id
+  const encodedUser = encodeURIComponent(username)
+  const basicAuth = basicAuthHeader(username, jwt)
   let createdFilename: string
-
-  before(async () => {
-    const res: any = await login()
-    jwt = res.jwt
-    username = res.user?._id ?? TEST_USER_USERNAME ?? ""
-    encodedUser = encodeURIComponent(username)
-    basicAuth = basicAuthHeader(username, jwt)
-    console.log("Login successful")
-  })
 
   // ─── OPTIONS ──────────────────────────────────────────────────────────────
 
