@@ -56,15 +56,6 @@ test:
       --network tdd
       -e MONGODB_HOST=tdd-db
       -e MONGODB_DB=nenkyuu_calendar_banana
-      -e GROUP_MANAGER_API_URL=https://groups-api.jtektrnd.net
-      -e WORKPLACE_MANAGER_API_URL=https://workplaces-api.jtektrnd.net
-      -e IDENTIFICATION_URL=https://employees-api.jtektrnd.net/v3/users/self
-      -e IDENTIFIER_FIELDS=_id
-      -e LOGIN_URL=https://employees-api.jtektrnd.net/v3/auth/login
-      -e TEST_USER_USERNAME=$TEST_USER_USERNAME
-      -e TEST_USER_PASSWORD=$TEST_USER_PASSWORD
-      -e TEST_GROUP_ID=fc12dcd4-e312-43f6-82e3-fdc4f891fb05
-      -e TEST_WORKPLACE_ID=c2810e52-7477-45c3-8229-1db711ef00fb
       ${CONTAINER_IMAGE_TEST}
       npm run coverage
 
