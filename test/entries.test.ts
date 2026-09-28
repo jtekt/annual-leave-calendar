@@ -1,7 +1,7 @@
 import request from "supertest"
 import { expect } from "chai"
 import app from "../index"
-import { TEST_GROUP_ID, TEST_JWT, TEST_WORKPLACE_ID } from "./mocks"
+import { FORBIDDEN_GROUP_ID, TEST_GROUP_ID, TEST_JWT, TEST_WORKPLACE_ID } from "./mocks"
 
 describe("/entries", () => {
   const jwt = TEST_JWT
@@ -69,6 +69,14 @@ describe("/entries", () => {
         .set("Authorization", `Bearer ${jwt}`)
 
       expect(status).to.equal(404)
+    })
+
+    it("Should return 403, not 401, if the group manager refuses access", async () => {
+      const { status } = await request(app)
+        .get(`/groups/${FORBIDDEN_GROUP_ID}/entries`)
+        .set("Authorization", `Bearer ${jwt}`)
+
+      expect(status).to.equal(403)
     })
 
     it("Should return entries only at item.entries, not duplicated on user object", async () => {

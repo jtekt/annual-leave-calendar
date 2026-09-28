@@ -28,6 +28,7 @@ export const TEST_JWT = [
   "test-signature",
 ].join(".")
 export const TEST_GROUP_ID = "test-group"
+export const FORBIDDEN_GROUP_ID = "forbidden-group"
 export const TEST_WORKPLACE_ID = "test-workplace"
 
 // Overrides any value coming from a local .env: tests must never use real services
@@ -53,12 +54,16 @@ nock(ACCOUNT_MANAGER)
       : [401, { message: "Unauthorized" }]
   })
 
-// Group manager: TEST_GROUP_ID contains the test user, other groups do not exist
+// Group manager: TEST_GROUP_ID contains the test user, FORBIDDEN_GROUP_ID is
+// not visible to them, other groups do not exist
 nock(GROUP_MANAGER)
   .persist()
   .get(`/v3/groups/${TEST_GROUP_ID}/members`)
   .query(true)
   .reply(200, { items: [TEST_USER], count: 1, batch_size: 10000 })
+  .get(`/v3/groups/${FORBIDDEN_GROUP_ID}/members`)
+  .query(true)
+  .reply(403, { message: "Forbidden" })
   .get(/^\/v3\/groups\/[^/]+\/members/)
   .query(true)
   .reply(404, { message: "Group not found" })

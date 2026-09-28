@@ -1,6 +1,6 @@
 import axios from "axios"
 import { extractAuthHeaders } from "../utils"
-import { NotFoundError, UnauthorizedError, ValidationError } from "../errors"
+import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from "../errors"
 
 const {
   USER_MANAGER_API_URL,
@@ -34,10 +34,10 @@ export async function fetchGroupMembers(
     }
   } catch (error: any) {
     const status = error?.response?.status ?? 500
-    if (status === 403 || status === 401) {
-      throw new UnauthorizedError(
-        "Unauthorized to access GROUP_MANAGER_API_URL"
-      )
+    if (status === 403) {
+      throw new ForbiddenError("GROUP_MANAGER_API_URL", "Not allowed to access this resource")
+    } else if (status === 401) {
+      throw new UnauthorizedError("Unauthorized to access GROUP_MANAGER_API_URL")
     } else if (status === 404) {
       throw new NotFoundError("GROUP_MANAGER_API_URL", groupId)
     } else {
@@ -75,10 +75,10 @@ export async function fetchWorkplaceEmployees(
     }
   } catch (error: any) {
     const status = error?.response?.status ?? 500
-    if (status === 403 || status === 401) {
-      throw new UnauthorizedError(
-        "Unauthorized to access WORKPLACE_MANAGER_API_URL"
-      )
+    if (status === 403) {
+      throw new ForbiddenError("WORKPLACE_MANAGER_API_URL", "Not allowed to access this resource")
+    } else if (status === 401) {
+      throw new UnauthorizedError("Unauthorized to access WORKPLACE_MANAGER_API_URL")
     } else if (status === 404) {
       throw new NotFoundError("WORKPLACE_MANAGER_API_URL", workplaceId)
     } else {
@@ -102,7 +102,9 @@ export const fetchUserData = async (
   } catch (error: any) {
     const status = error?.response?.status ?? 500
     const code = error?.code
-    if (status === 403 || status === 401) {
+    if (status === 403) {
+      throw new ForbiddenError("USER_MANAGER_API", "Not allowed to access this resource")
+    } else if (status === 401) {
       throw new UnauthorizedError("Unauthorized to access USER_MANAGER_API")
     } else if (status === 404) {
       throw new NotFoundError("USER_MANAGER_API", user_id)
