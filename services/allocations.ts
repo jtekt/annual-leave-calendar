@@ -86,7 +86,7 @@ export async function createOrUpdateAllocation(
   const filter = { year, user_id }
   const update = { year, user_id, leaves, reserve }
   return Allocation.findOneAndUpdate(filter, update, {
-    new: true,
+    returnDocument: "after",
     upsert: true,
   })
 }

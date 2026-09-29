@@ -36,7 +36,7 @@ export async function listEntries(
   const numericLimit = Math.max(limit, 0)
   const { start, end } = dateRange(year, start_date, end_date)
 
-  const query: mongoose.FilterQuery<IEntry> = {
+  const query: mongoose.QueryFilter<IEntry> = {
     date: { $gte: start, $lte: end },
   }
   if (user_ids?.length) query.$or = user_ids.map((id) => ({ user_id: id }))
@@ -135,7 +135,7 @@ export async function createEntry(
   return Entry.findOneAndUpdate(
     { user_id, date },
     { user_id, date, ...otherFields },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   )
 }
 
@@ -170,7 +170,7 @@ export async function updateEntries(
 ) {
   const bulkOps = entries.map(({ _id, type }) => ({
     updateOne: {
-      filter: { _id: mongoose.Types.ObjectId(_id) },
+      filter: { _id: new mongoose.Types.ObjectId(_id) },
       update: { $set: { type: String(type) } },
     },
   }))
@@ -185,7 +185,7 @@ export async function deleteEntry(id: string) {
 
 export async function deleteEntries(ids: string[]) {
   const bulkOps = ids.map((_id) => ({
-    deleteOne: { filter: { _id: mongoose.Types.ObjectId(_id) } },
+    deleteOne: { filter: { _id: new mongoose.Types.ObjectId(_id) } },
   }))
   return Entry.collection.bulkWrite(bulkOps)
 }
