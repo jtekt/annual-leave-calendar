@@ -20,12 +20,6 @@ schema.index(
   { year: 1, user_id: 1 },
   { unique: true, partialFilterExpression: { user_id: { $exists: true } } }
 )
-
-// Unique when user_id exists
-schema.index(
-  { year: 1, user_id: 1 },
-  { unique: true, partialFilterExpression: { user_id: { $exists: true } } }
-)
 schema.index({ user_id: 1 })
 schema.index({ year: 1 })
 
