@@ -22,7 +22,7 @@
     "express": "^5.2.1",
     "express-prom-bundle": "^6.6.0",
     "http-errors": "^2.0.0",
-    "mongoose": "^5.13.14",
+    "mongoose": "^9.10.2",
     "prom-client": "^15.0.0",
     "swagger-autogen": "^2.23.1",
     "swagger-ui-express": "^4.6.3",

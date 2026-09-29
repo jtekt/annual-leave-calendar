@@ -24,14 +24,6 @@ export const redactedConnectionString = connectionString.replace(
   "://***:***@"
 )
 
-const mongodb_options = {
-  useUnifiedTopology: true,
-  useNewUrlParser: true,
-}
-
-mongoose.set('useFindAndModify', false)
-mongoose.set("useCreateIndex", true)
-
 // Mongoose does not retry a failed initial connection by itself, hence the retry loop.
 // Not strictly needed: the process could exit on failure instead, and Kubernetes
 // would restart the pod (with backoff) until the DB is up. Retrying here recovers
@@ -40,7 +32,7 @@ export const connect = () => {
   console.log(`[MongoDB] Attempting connection to ${redactedConnectionString}`)
 
   mongoose
-    .connect(connectionString, mongodb_options)
+    .connect(connectionString)
     .then(() => {
       console.log("[Mongoose] Initial connection successful")
     })
