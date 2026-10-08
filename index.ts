@@ -22,11 +22,12 @@ import {
   ValidationError,
   UnauthorizedError,
   ForbiddenError,
+  NotImplementedError,
 } from "./errors"
 
 const {
   APP_PORT = 80,
-  GROUP_MANAGER_API_URL = "UNDEFINED",
+  GROUP_MANAGER_API_URL,
   USER_MANAGER_API_URL,
   IDENTIFICATION_URL,
   WORKPLACE_MANAGER_API_URL,
@@ -63,7 +64,7 @@ app.get("/", (_: Request, res: Response) => {
     auth: {
       identification_url: IDENTIFICATION_URL || "Unset",
     },
-    group_manager_api_url: GROUP_MANAGER_API_URL,
+    group_manager_api_url: GROUP_MANAGER_API_URL || "Unset",
     user_manager_api_url: USER_MANAGER_API_URL || "Unset",
     workplace_manager_api_url: WORKPLACE_MANAGER_API_URL || "Unset",
     mongodb: {
@@ -93,6 +94,7 @@ app.use((error: any, req: Request, res: Response, next: NextFunction) => {
   else if (error instanceof ValidationError) statusCode = 400
   else if (error instanceof UnauthorizedError) statusCode = 401
   else if (error instanceof ForbiddenError) statusCode = 403
+  else if (error instanceof NotImplementedError) statusCode = 501
   else statusCode = error.statusCode ?? 500
 
   if (isNaN(statusCode) || statusCode > 600) statusCode = 500

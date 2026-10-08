@@ -33,3 +33,12 @@ export class ForbiddenError extends Error {
     Object.setPrototypeOf(this, new.target.prototype)
   }
 }
+
+// 501
+export class NotImplementedError extends Error {
+  constructor(message: string = "Not implemented") {
+    super(message)
+    this.name = new.target.name
+    Object.setPrototypeOf(this, new.target.prototype)
+  }
+}
