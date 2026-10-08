@@ -68,7 +68,7 @@ All routes except `/`, `/health` and `/docs` require authentication, checked aga
 | APP_PORT                  | Port used by Express                                                                                          | 80               |
 | IDENTIFICATION_URL        | URL of the endpoint identifying the current user, e.g. `http://employee-manager/v3/users/self` (required)     |                  |
 | IDENTIFIER_FIELDS         | Comma-separated user properties used as the user ID, in order of preference                                   | sub              |
-| GROUP_MANAGER_API_URL     | URL of the group manager API                                                                                  |                  |
+| GROUP_MANAGER_API_URL     | URL of the group manager API (optional; when unset, `/groups/:id/entries` and `/groups/:id/allocations` return 501) |    |
 | WORKPLACE_MANAGER_API_URL | URL of the workplace manager API                                                                              |                  |
 | USER_MANAGER_API_URL      | URL of the users endpoint of the user manager, e.g. `http://employee-manager/v3/users`. Required when `RESOLVE_USER_IDENTIFIER=true` | |
 | RESOLVE_USER_IDENTIFIER   | When `true`, user IDs in routes that are not the current user's are resolved via `USER_MANAGER_API_URL`       | false            |

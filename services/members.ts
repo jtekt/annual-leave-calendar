@@ -1,12 +1,14 @@
 import axios from "axios"
 import { extractAuthHeaders } from "../utils"
-import { ForbiddenError, NotFoundError, UnauthorizedError, ValidationError } from "../errors"
+import {
+  ForbiddenError,
+  NotFoundError,
+  NotImplementedError,
+  UnauthorizedError,
+  ValidationError,
+} from "../errors"
 
-const {
-  USER_MANAGER_API_URL,
-  GROUP_MANAGER_API_URL,
-  WORKPLACE_MANAGER_API_URL,
-} = process.env
+const { USER_MANAGER_API_URL, WORKPLACE_MANAGER_API_URL } = process.env
 
 /**
  * Fetches group members from the Group Manager API
@@ -17,6 +19,13 @@ export async function fetchGroupMembers(
   batchSize: number = 10000,
   startIndex: number = 0
 ) {
+  // Read at call time so that the group manager can be disabled (e.g. in tests)
+  const { GROUP_MANAGER_API_URL } = process.env
+  if (!GROUP_MANAGER_API_URL)
+    throw new NotImplementedError(
+      "Groups are not available: GROUP_MANAGER_API_URL is not set"
+    )
+
   try {
     const url = `${GROUP_MANAGER_API_URL}/v3/groups/${groupId}/members`
     const headers = extractAuthHeaders(reqHeaders)
