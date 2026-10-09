@@ -3,7 +3,7 @@
   "description": "A microservice to keep track of annual leaves of employees",
   "main": "build/index.js",
   "scripts": {
-    "dev": "nodemon index.ts",
+    "dev": "npm run swagger-autogen && nodemon index.ts",
     "build": "npm run swagger-autogen && tsc --outdir ./build -p .",
     "start": "node ./build/index.js",
     "test": "mocha --node-option no-experimental-strip-types -r ts-node/register -r ./test/mocks.ts test/*.test.ts --timeout 10000 --exit",
