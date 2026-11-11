@@ -89,3 +89,27 @@ export function extractAuthHeaders(reqHeaders: Record<string, any>) {
 
   return headers
 }
+
+// Maps JWT claim names to the standard field names the frontend expects.
+// STANDALONE_USER_NAME_KEY: which JWT claim holds the user's display name (e.g. "preferred_username", "name")
+// STANDALONE_USER_EMAIL_KEY: which JWT claim holds the email (e.g. "email")
+export function buildUserObj(user_id: string, properties: Record<string, any> = {}) {
+  return {
+    _id: user_id,
+    display_name:
+      ((process.env.STANDALONE_USER_NAME_KEY &&
+        properties[process.env.STANDALONE_USER_NAME_KEY]) as string) ?? user_id,
+    email_address: (process.env.STANDALONE_USER_EMAIL_KEY &&
+      properties[process.env.STANDALONE_USER_EMAIL_KEY]) as string | undefined,
+    ...(process.env.STANDALONE_USER_EMPLOYEE_NUMBER_KEY && {
+      employee_number: properties[
+        process.env.STANDALONE_USER_EMPLOYEE_NUMBER_KEY
+      ] as string | undefined,
+    }),
+    ...(process.env.STANDALONE_USER_ROLE_KEY && {
+      role: properties[process.env.STANDALONE_USER_ROLE_KEY] as
+        | string
+        | undefined,
+    }),
+  }
+}

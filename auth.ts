@@ -3,8 +3,10 @@ import middleware, {
 } from "@jtekt/express-authentication-middleware"
 import { Request, Response, NextFunction, RequestHandler } from "express"
 import { UnauthorizedError, ValidationError } from "./errors"
+import { getUserIdFromUserObj } from "./utils"
+import UserModel from "./models/user"
 
-const { IDENTIFICATION_URL } = process.env
+const { IDENTIFICATION_URL, STANDALONE_MODE } = process.env
 
 export const identificationMiddleware = () => {
   if (!IDENTIFICATION_URL)
@@ -20,6 +22,31 @@ export const identificationMiddleware = () => {
   }
 
   return middleware(options)
+}
+
+export const jitUserCreationMiddleware = (): RequestHandler => {
+  return async (_req: Request, res: Response, next: NextFunction) => {
+    if (!STANDALONE_MODE) return next()
+    try {
+      const user = res.locals.user
+      const user_id = getUserIdFromUserObj(user)
+      console.log("JIT user creation middleware: creating user in DB", user_id)
+      if (user_id) {
+        await UserModel.updateOne(
+          { user_id },
+          { $setOnInsert: { user_id }, $set: { properties: user } },
+          { upsert: true }
+        )
+      }
+    } catch (e) {
+      console.error(
+        "JIT user creation middleware: failed to create user in DB",
+        e
+      )
+      // non-fatal: JIT failure should not block the request
+    }
+    next()
+  }
 }
 
 /**
