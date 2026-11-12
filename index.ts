@@ -66,7 +66,16 @@ app.get("/", (_: Request, res: Response) => {
     },
     group_manager_api_url: GROUP_MANAGER_API_URL || "Unset",
     user_manager_api_url: USER_MANAGER_API_URL || "Unset",
+
+    // Optional
     workplace_manager_api_url: WORKPLACE_MANAGER_API_URL || "Unset",
+    
+    standalone_mode: !process.env.GROUP_MANAGER_API_URL && !process.env.USER_MANAGER_API_URL,
+    standalone_user_groups_key:
+      process.env.STANDALONE_USER_GROUPS_KEY || "Unset",
+    standalone_user_employee_number_key:
+      process.env.STANDALONE_USER_EMPLOYEE_NUMBER_KEY || "Unset",
+    standalone_user_role_key: process.env.STANDALONE_USER_ROLE_KEY || "Unset",
     mongodb: {
       url: redactedConnectionString,
       connected: dbConnected(),

@@ -4,7 +4,7 @@ import { NotImplementedError } from "../../errors"
 import { getStableUserIdFromParamsUserId } from "../../utils"
 
 export const list_users = async (req: Request, res: Response) => {
-  if (!process.env.STANDALONE_MODE)
+  if (process.env.GROUP_MANAGER_API_URL || process.env.USER_MANAGER_API_URL)
     throw new NotImplementedError(
       "User listing is only available in standalone mode"
     )
@@ -22,7 +22,7 @@ export const list_users = async (req: Request, res: Response) => {
 }
 
 export const get_user = async (req: Request, res: Response) => {
-  if (!process.env.STANDALONE_MODE)
+  if (process.env.GROUP_MANAGER_API_URL || process.env.USER_MANAGER_API_URL)
     throw new NotImplementedError(
       "User data is only available in standalone mode"
     )

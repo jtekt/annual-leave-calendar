@@ -26,11 +26,11 @@ export const identificationMiddleware = () => {
 
 export const jitUserCreationMiddleware = (): RequestHandler => {
   return async (_req: Request, res: Response, next: NextFunction) => {
-    if (!STANDALONE_MODE) return next()
+    if (process.env.GROUP_MANAGER_API_URL || process.env.USER_MANAGER_API_URL) return next()
     try {
       const user = res.locals.user
       const user_id = getUserIdFromUserObj(user)
-      console.log("JIT user creation middleware: creating user in DB", user_id)
+      
       if (user_id) {
         await UserModel.updateOne(
           { user_id },

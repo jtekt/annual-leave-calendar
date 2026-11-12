@@ -9,21 +9,22 @@ import {
 } from "../errors"
 import UserModel from "../models/user"
 
-const { STANDALONE_MODE } = process.env
-
 // ----- Standalone Functions -----
 
-export async function listGroupsFromDB() {
-  const { STANDALONE_GROUPS_KEY } = process.env
-  if (!STANDALONE_GROUPS_KEY)
-    throw new NotImplementedError("STANDALONE_GROUPS_KEY is not set")
+export async function listGroupsFromDB(currentUserId: string) {
+  const { STANDALONE_USER_GROUPS_KEY } = process.env
+  if (!STANDALONE_USER_GROUPS_KEY)
+    throw new NotImplementedError("STANDALONE_USER_GROUPS_KEY is not set")
   return UserModel.aggregate([
-    { $match: { [`properties.${STANDALONE_GROUPS_KEY}`]: { $exists: true } } },
-    { $unwind: `$properties.${STANDALONE_GROUPS_KEY}` },
+    { $match: { [`properties.${STANDALONE_USER_GROUPS_KEY}`]: { $exists: true } } },
+    { $unwind: `$properties.${STANDALONE_USER_GROUPS_KEY}` },
     {
       $group: {
-        _id: `$properties.${STANDALONE_GROUPS_KEY}`,
+        _id: `$properties.${STANDALONE_USER_GROUPS_KEY}`,
         member_count: { $sum: 1 },
+        is_member: {
+          $sum: { $cond: [{ $eq: ["$user_id", currentUserId] }, 1, 0] },
+        },
       },
     },
     { $sort: { _id: 1 } },
@@ -72,6 +73,12 @@ export async function listUsersFromDB(
               $options: "i",
             },
           },
+          {
+            [`properties.${process.env.STANDALONE_USER_EMPLOYEE_NUMBER_KEY}`]: {
+              $regex: search,
+              $options: "i",
+            },
+          },
         ],
       }
     : {}
@@ -108,14 +115,14 @@ export async function fetchGroupMembers(
   batchSize: number = 10000,
   startIndex: number = 0
 ) {
-  const { GROUP_MANAGER_API_URL, STANDALONE_GROUPS_KEY } = process.env
+  const { GROUP_MANAGER_API_URL, STANDALONE_USER_GROUPS_KEY } = process.env
 
   if (!GROUP_MANAGER_API_URL) {
-    if (!STANDALONE_MODE || !STANDALONE_GROUPS_KEY)
+    if (process.env.GROUP_MANAGER_API_URL || process.env.USER_MANAGER_API_URL || !STANDALONE_USER_GROUPS_KEY)
       throw new NotImplementedError(
         "Groups are not available: GROUP_MANAGER_API_URL is not set"
       )
-    const query = { [`properties.${STANDALONE_GROUPS_KEY}`]: groupId }
+    const query = { [`properties.${STANDALONE_USER_GROUPS_KEY}`]: groupId }
     const [rawUsers, total_of_users] = await Promise.all([
       UserModel.find(query).skip(startIndex).limit(batchSize).lean(),
       UserModel.countDocuments(query),
@@ -171,24 +178,12 @@ export async function fetchWorkplaceEmployees(
   batchSize: number = 10000,
   startIndex: number = 0
 ) {
-  const { WORKPLACE_MANAGER_API_URL, STANDALONE_WORKPLACE_KEY } = process.env
+  const { WORKPLACE_MANAGER_API_URL } = process.env
 
   if (!WORKPLACE_MANAGER_API_URL) {
-    if (!STANDALONE_MODE || !STANDALONE_WORKPLACE_KEY)
-      throw new NotImplementedError(
-        "Workplaces are not available: WORKPLACE_MANAGER_API_URL is not set"
-      )
-    const query = { [`properties.${STANDALONE_WORKPLACE_KEY}`]: workplaceId }
-    const [rawUsers, total_of_users] = await Promise.all([
-      UserModel.find(query).skip(startIndex).limit(batchSize).lean(),
-      UserModel.countDocuments(query),
-    ])
-    const users = rawUsers.map((u) => ({
-      user_id: u.user_id,
-      properties: u.properties,
-      ...buildUserObj(u.user_id, u.properties ?? {}),
-    }))
-    return { users, total_of_users, limit_of_users: batchSize }
+    throw new NotImplementedError(
+      "Workplaces are not available: WORKPLACE_MANAGER_API_URL is not set"
+    )
   }
 
   try {
@@ -237,7 +232,7 @@ export const fetchUserData = async (
   const { USER_MANAGER_API_URL } = process.env
 
   if (!USER_MANAGER_API_URL) {
-    if (!STANDALONE_MODE)
+    if (process.env.GROUP_MANAGER_API_URL || process.env.USER_MANAGER_API_URL)
       throw new NotImplementedError("USER_MANAGER_API_URL is not set")
     const user = await UserModel.findOne({ user_id })
     if (!user) throw new NotFoundError("UserModel", user_id)
